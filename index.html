@@ -1,0 +1,196 @@
+<!-- 
+    Clément Augustinowick
+-->
+
+<!DOCTYPE html>
+<html lang = "fr">
+    <head>
+        <title>Mon gestionnaire de tournois</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="container">
+
+            <div id="creation">
+                <h1>Bienvenu sur votre gestionnaire de tournois</h1>
+                <button id="new_tournament" class="btn" onclick="newTournament()">Nouveau tournois</button>
+            </div>
+
+        <!------------------------------------------------------------------------------------------------------------->
+
+            <div id="form_addTeams" style="display:none;">
+                <div id="formContainer">
+
+                    <div id="form_addTeam">
+                        <h3>Ajouter une nouvelle équipe</h3>
+
+                        <p>Entrez le nom de l'équipe : </p>
+                        <input type="text" id="input_teamName" required>
+
+                        <button id="btn_addTeam" class="btn" onclick="AddTeamToList()">
+                            Ajouter l'équipe
+                        </button>
+                    </div>
+                    
+                    <div id="form_listTeams">
+                        <h3>Liste des équipes</h3>
+                        <ol id="list_teamValidation"></ol>
+                    </div>
+                </div>
+                
+                <button disabled id="btn_teamsValidation" class="btn" onclick="MoveToTournamentSpecForm()">Valider les équipes</button>
+            </div>
+            
+        <!------------------------------------------------------------------------------------------------------------->
+            
+            <div id="form_selectTournamentSpec" style="display:none;">
+                <h3>Sélection des spécificités du tournois</h3>
+
+                <div class="div_formElem">
+                    <p>Choisissez le type du tournois :</p>
+                    <select name="tournamentType" id="select_tournamentType">
+                        <option value="RoundRobin">Round Robin</option>
+                        <option value="NombreDeParties">Tournois en nombre de parties par équipes</option>
+                        <option value="SimpleKO">Simple KO</option>
+                        <option value="DoubleKO">Double KO</option>
+                        <option value="TournoisSuisse">Tournois Suisse</option>
+                        <option value="TournoisPoule">Tournois en poule</option>
+                        <option value="TournoisPouleTableau">Tournois en poule + simple KO</option>
+                    </select>
+                </div>
+
+                <p id="tournamentDescription" class="description"></p>
+
+                <div id="div_selectNbGame" class="div_formElem" style="display:none;">
+                    <p>Choisissez le nombre de match joué :</p>
+                    <input type="number" id="input_nbGame" min="1" value="1">
+                </div>
+
+                <div class="div_formElem">
+                    <p>Choisissez le nombre de set/manche par match :</p>
+                    <input type="number" id="input_nbGameSet" min="1" value="1">
+                </div>
+
+                <div class="div_formElem">
+                    <p>Choisissez le nombre de point par set/manche :</p>
+                    <input type="number" id="input_nbSetPoint" min="1" value="1">
+                </div>
+
+                <div class="div_formElem">
+                    <p>Combien de point d'écart doit-il y avoir pour gagner un set / une manche :</p>
+                    <input type="number" id="input_pointSpread" min="1" value="1">
+                </div>
+
+                <!-- <div class="div_formElem">
+                    <p>Combien avez-vous de terrain ? :</p>
+                    <input type="number" id="input_nbSportField" min="1" value="1">
+                </div> -->
+
+                <button id="btn_TournamentTypeValidation" class="btn" onclick="GetTournamentInfos()">Valider</button>
+            </div>
+
+        <!------------------------------------------------------------------------------------------------------------->
+
+            <div id="div_PLAY" style="display:none;">
+                <div id="div_teamScore" class="div_matches">
+                    <h3>PANNEAU DES SCORES</h3>
+
+                    <div id="div_scorePanelTitle">
+                        <div class="div_scoreTeam">
+
+                            <div class="div_panelTeamName">
+                                <h5>Equipes</h5>
+                            </div>
+
+                            <div class="div_panelTeamStat">
+                                <h5>Victoire</h5>
+                            </div>
+
+                            <div class="div_panelTeamStat">
+                                <h5>Set/Manche</br>gagné</h5>
+                            </div>
+
+                            <div class="div_panelTeamStat">
+                                <h5>Goal</br>Average</h5>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div id="div_scorePanel"></div>
+
+                    <button id="btn_calculRank" class="btn" onclick="CalculateRanking()">Afficher le classement</button>
+                </div>
+
+                <div id="overlayRank" class="overlay" style="display:none;">
+                    <div id="div_overlayRank" class="div_overlayMatch">
+                    
+                        <div class="overlayHeader">
+                            <h3 style="text-align: center;">Classement</h3>
+                            <button class="btn_closeOverlay" onclick="CloseRankOverlay()">✖</button>
+                        </div>
+
+                        <div id="div_rankList"></div>
+
+                    </div>
+                </div>
+
+                <div id="div_roundsMatches" class="div_matches">
+
+                    <h3>LISTE DES MATCHES</h3>
+
+                    <div id="div_roundContent">
+                        <button class="btn btn_navigation" onclick="PreviousRound()"><</button>
+                        <div id="div_rounds"></div>
+                        <button class="btn btn_navigation" onclick="NextRound()">></button>
+                    </div>
+
+                </div>
+
+                <div id="overlayInputResult" class="overlay" style="display:none;">
+
+                    <div class="div_overlayMatch">
+                    
+                        <div class="overlayHeader">
+                            <h3 id="overlayMatchTitle" style="text-align: center;"></h3>
+                            <button class="btn_closeOverlay" onclick="CloseMatchOverlay()">✖</button>
+                        </div>
+
+                        <div id="overlayContent">
+
+                            <div id="overlayContentHeader">
+                                <h3 id="p_nbSetTeam1">0</h3>
+                                <h3>SET</h3>
+                                <h3 id="p_nbSetTeam2">0</h3>
+                            </div>
+
+
+                            <div id="overlayContentContent">
+
+                                <div id="div_inputResult" class="div_setResult">
+
+                                    <p id="p_inputSetResult">Set 0 :</p>
+
+                                    <div class="div_result">
+                                        <input id="inputTeam1" type=number value=0 min=0></input>
+                                        <p>-</p>
+                                        <input id="inputTeam2" type=number value=0 min=0></input>
+                                    </div>
+
+                                    <button id="btn_validSetResult" onclick="ValidInputSetResult()">✔</button>
+
+                                </div>
+
+                                <div id="div_overlayContentResult" class="div_setResult"></div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script src="script.js"></script>
+</html>
