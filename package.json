@@ -1,0 +1,9 @@
+{
+  "name": "gestionnaire-tournois",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node back/server.js"
+  }
+}

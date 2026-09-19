@@ -1,4 +1,4 @@
-<!-- 
+<!--
     Clément Augustinowick
 -->
 
@@ -15,7 +15,31 @@
 
             <div id="creation">
                 <h1>Bienvenu sur votre gestionnaire de tournois</h1>
-                <button id="new_tournament" class="btn" onclick="newTournament()">Nouveau tournois</button>
+                <button id="new_tournament" class="btn" onclick="askingSaveTournament()">Nouveau tournois</button>
+                <button id="old_tournament" class="btn" onclick="checkOldTournament()">Tournois existant</button>
+                <input type="file" id="input_loadTournament" accept="application/json" style="display:none" onchange="loadTournamentFile(event)">
+            </div>
+
+            <div id="overlayAskingSave" class="overlay" style="display:none;">
+                <div id="div_overlayAskingSave" class="div_overlayMatch">
+                
+                    <div class="overlayHeader">
+                        <button class="btn_closeOverlay" onclick="closeAskingSaveOverlay()">✖</button>
+                    </div>
+
+                    <h3 style="text-align: center; margin-bottom: 20px;">
+                        Souhaitez-vous que ce site enregistre les informations du tournois sur votre appareil ?
+                    </h3>
+                    <h4 style="text-align: center; margin-bottom: 60px;">
+                        (Cela vous permet de consulter d'anciens tournois et également de poursuivre le tournois en cas d'arrêt du site ou de votre appareil)
+                    </h4>
+                    
+                    <div class="div_formElem" style="justify-content: center;">
+                        <button class="btn" onclick="saveTournament(true)">Oui</button>
+                        <button class="btn" onclick="saveTournament(false)">Non</button>
+                    </div>
+
+                </div>
             </div>
 
         <!------------------------------------------------------------------------------------------------------------->
@@ -192,5 +216,6 @@
             </div>
         </div>
     </body>
+
     <script src="script.js"></script>
 </html>
