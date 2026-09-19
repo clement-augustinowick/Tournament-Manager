@@ -77,7 +77,18 @@ const server = http.createServer(async (req, res) => {
             const body = await readBody(req);
 
             tournament.setTeams(body.teams);
-            
+
+            return sendJson(res, 200, {
+                success: true,
+                state: tournament.getState()
+            });
+        }
+
+        if (req.url === "/api/load" && req.method === "POST") {
+            const body = await readBody(req);
+
+            tournament.loadState(body.state);
+
             return sendJson(res, 200, {
                 success: true,
                 state: tournament.getState()

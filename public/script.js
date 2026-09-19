@@ -55,6 +55,39 @@ function closeAskingSaveOverlay(){
     document.getElementById('overlayAskingSave').style.display = 'none';
 }
 
+function checkOldTournament() {
+    document.getElementById("input_loadTournament").click();
+}
+
+async function loadTournamentFile(event) {
+    const file = event.target.files[0];
+    event.target.value = ""; // permet de resélectionner le même fichier plus tard
+
+    if (!file) return;
+
+    try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+
+        const result = await api("/api/load", {
+            method: "POST",
+            body: JSON.stringify({ state: parsed })
+        });
+
+        state = result.state;
+        // check result.state
+
+        document.getElementById("creation").style.display = "none";
+        document.getElementById("form_addTeams").style.display = "none";
+        document.getElementById("form_selectTournamentSpec").style.display = "none";
+        document.getElementById("div_PLAY").style.display = "flex";
+
+        displayTournament();
+    } catch (error) {
+        showError(new Error("Impossible de charger ce fichier : " + error.message));
+    }
+}
+
 function saveTournament(save) {
     api("/api/save", {
         method: "POST",
@@ -190,11 +223,32 @@ async function GetTournamentInfos() {
         document.getElementById("div_PLAY").style.display = "flex";
 
         // CreateScorePanel & CreateRoundsPanel en fonction du type de tournois
-        CreateScorePanel();
-        CreateRoundsPanel();
+        displayTournament();
     } catch (error) {
         showError(error);
     }
+}
+
+// Table de correspondance type de tournoi -> fonction d'affichage du panneau de jeu.
+// Permet d'adapter l'affichage à chaque type de tournoi (nouveau ou repris depuis un fichier),
+// sans changer GetTournamentInfos() ni loadTournamentFile() à chaque ajout d'un nouveau type.
+const tournamentDisplayBuilders = {
+    RoundRobin: displayRoundRobinTournament
+};
+
+function displayTournament() {
+    const builder = tournamentDisplayBuilders[state.tournamentInfos.tournamentType];
+
+    if (!builder) {
+        throw new Error(`Le type de tournoi "${state.tournamentInfos.tournamentType}" n'est pas géré côté affichage.`);
+    }
+
+    builder();
+}
+
+function displayRoundRobinTournament() {
+    CreateScorePanel();
+    CreateRoundsPanel();
 }
 
 function CreateScorePanel() {
@@ -238,7 +292,7 @@ function CreateRoundsPanel() {
         divRound.classList.add("div_round");
         divRound.id = `div_round${index + 1}`;
 
-        if (index !== 0) divRound.classList.add("hidden");
+        if (round.id !== state.currentRound) divRound.classList.add("hidden");
 
         const h3 = document.createElement("h3");
         h3.textContent = `Round ${round.id}`;
@@ -432,6 +486,8 @@ async function CalculateRanking() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 window.newTournament = newTournament;
+window.checkOldTournament = checkOldTournament;
+window.loadTournamentFile = loadTournamentFile;
 window.AddTeamToList = AddTeamToList;
 window.RemoveTeamFromList = RemoveTeamFromList;
 window.DisplayTeamsList = DisplayTeamsList;

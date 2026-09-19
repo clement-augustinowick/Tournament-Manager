@@ -16,6 +16,8 @@
             <div id="creation">
                 <h1>Bienvenu sur votre gestionnaire de tournois</h1>
                 <button id="new_tournament" class="btn" onclick="askingSaveTournament()">Nouveau tournois</button>
+                <button id="old_tournament" class="btn" onclick="checkOldTournament()">Tournois existant</button>
+                <input type="file" id="input_loadTournament" accept="application/json" style="display:none" onchange="loadTournamentFile(event)">
             </div>
 
             <div id="overlayAskingSave" class="overlay" style="display:none;">

@@ -23,6 +23,10 @@ const defaultMatch = {
 
 export class Tournament {
     constructor() {
+        this.tournamentGenerators = {
+            RoundRobin: () => this.generateRoundRobin()
+        };
+
         this.reset();
     }
 
@@ -89,14 +93,46 @@ export class Tournament {
             pointSpread
         };
 
+        const generator = this.tournamentGenerators[tournamentType];
+        if (!generator) {
+            throw new Error(`Le type "${tournamentType}" n'a pas été implémenté.`);
+        }
+
         this.currentRound = 1;
         this.matches = [];
 
-        if (tournamentType === "RoundRobin") {
-            this.generateRoundRobin();
-        } else {
-            throw new Error(`Le type "${tournamentType}" n'a pas été implémenté.`);
+        generator();
+
+        return this.getState();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    loadState(data) {
+        if (!data || typeof data !== "object") {
+            throw new Error("Fichier de tournoi invalide.");
         }
+
+        const { teamsList, tournamentInfos, matches, currentRound } = data;
+
+        if (!Array.isArray(teamsList) || teamsList.length < 3) {
+            throw new Error("Fichier de tournoi invalide : liste d'équipes incorrecte.");
+        }
+
+        if (!tournamentInfos || !this.tournamentGenerators[tournamentInfos.tournamentType]) {
+            throw new Error("Fichier de tournoi invalide : type de tournoi inconnu.");
+        }
+
+        if (!Array.isArray(matches)) {
+            throw new Error("Fichier de tournoi invalide : liste de matchs incorrecte.");
+        }
+
+        this.teamsList = structuredClone(teamsList);
+        this.tournamentInfos = structuredClone(tournamentInfos);
+        this.matches = structuredClone(matches);
+        this.currentRound = Number(currentRound) || 1;
+
+        this.saving = true;
 
         return this.getState();
     }
