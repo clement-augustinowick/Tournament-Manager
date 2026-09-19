@@ -49,9 +49,11 @@ async function serveStatic(req, res) {
     try {
         const data = await fs.readFile(filePath);
         const ext = path.extname(filePath);
+        
         res.writeHead(200, {
             "Content-Type": mimeTypes[ext] || "application/octet-stream"
         });
+        
         res.end(data);
     } catch {
         res.writeHead(404);
@@ -61,30 +63,45 @@ async function serveStatic(req, res) {
 
 const server = http.createServer(async (req, res) => {
     try {
+        if (req.url === "/api/save" && req.method === "POST") {
+            const body = await readBody(req);
+
+            tournament.saving = !!body.save;
+
+            return sendJson(res, 200, {
+                success: true
+            });
+        }
+
         if (req.url === "/api/teams" && req.method === "POST") {
             const body = await readBody(req);
+
             tournament.setTeams(body.teams);
-            const file = await tournament.save();
+            
             return sendJson(res, 200, {
                 success: true,
-                state: tournament.getState(),
-                file
+                state: tournament.getState()
             });
         }
 
         if (req.url === "/api/tournament" && req.method === "POST") {
             const body = await readBody(req);
+
             tournament.configure(body);
-            const file = await tournament.save();
+            
+            if (tournament.saving){
+                await tournament.save();
+            }
+            
             return sendJson(res, 200, {
                 success: true,
-                state: tournament.getState(),
-                file
+                state: tournament.getState()
             });
         }
 
         const scoreMatch = req.url.match(/^\/api\/matches\/(\d+)\/(\d+)\/score$/);
         if (scoreMatch && req.method === "POST") {
+            
             const [, roundId, matchId] = scoreMatch;
             const body = await readBody(req);
 
@@ -95,11 +112,13 @@ const server = http.createServer(async (req, res) => {
                 body.score2
             );
 
-            const file = await tournament.save();
+            if (tournament.saving){
+                await tournament.save();
+            }
+            
             return sendJson(res, 200, {
                 success: true,
-                state: tournament.getState(),
-                file
+                state: tournament.getState()
             });
         }
 

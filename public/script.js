@@ -47,8 +47,22 @@ function showError(error) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-function newTournament() {
+function askingSaveTournament(){
+    document.getElementById('overlayAskingSave').style.display = 'flex';
+}
+
+function closeAskingSaveOverlay(){
+    document.getElementById('overlayAskingSave').style.display = 'none';
+}
+
+function saveTournament(save) {
+    api("/api/save", {
+        method: "POST",
+        body: JSON.stringify({ save })
+    });
+
     document.getElementById("creation").style.display = "none";
+    document.getElementById('overlayAskingSave').style.display = 'none';
     document.getElementById("form_addTeams").style.display = "flex";
 }
 

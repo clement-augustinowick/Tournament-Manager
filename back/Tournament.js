@@ -27,6 +27,7 @@ export class Tournament {
     }
 
     reset() {
+        this.saving = false;
         this.teamsList = [];
         this.tournamentInfos = {
             tournamentType: "",
