@@ -30,6 +30,12 @@ async function readBody(req) {
     return body ? JSON.parse(body) : {};
 }
 
+function getBrowserLanguage(req) {
+    const header = req.headers["accept-language"] || "";
+    const first = header.split(",")[0].trim();
+    return first.split("-")[0].split(";")[0].toLowerCase() || undefined;
+}
+
 function sendJson(res, status, data) {
     res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify(data));
@@ -101,7 +107,7 @@ const server = http.createServer(async (req, res) => {
             tournament.configure(body);
             
             if (tournament.saving){
-                await tournament.save();
+                await tournament.save(getBrowserLanguage(req));
             }
             
             return sendJson(res, 200, {
@@ -124,7 +130,7 @@ const server = http.createServer(async (req, res) => {
             );
 
             if (tournament.saving){
-                await tournament.save();
+                await tournament.save(getBrowserLanguage(req));
             }
             
             return sendJson(res, 200, {

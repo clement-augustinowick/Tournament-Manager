@@ -227,7 +227,7 @@ export class Tournament {
         };
     }
 
-    async save(directory = path.join(os.homedir(), "Desktop")) {
+    async save(language, directory = path.join(os.homedir(), "Downloads")) {
         await fs.mkdir(directory, { recursive: true });
 
         const now = new Date();
@@ -236,9 +236,9 @@ export class Tournament {
         const month = String(now.getMonth() + 1).padStart(2, "0");
         const year = now.getFullYear();
 
+        const prefix = language == "fr" ? "tournois" : "tournament";
         const date = `${day}-${month}-${year}`;
-
-        const fileName = path.join(directory, `tournament-${date}.json`);
+        const fileName = path.join(directory, `${prefix}-${date}.json`);
 
         await fs.writeFile(
             fileName,

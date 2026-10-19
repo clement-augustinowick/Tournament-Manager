@@ -17,6 +17,7 @@
                 <h1>Bienvenu sur votre gestionnaire de tournois</h1>
                 <button id="new_tournament" class="btn" onclick="askingSaveTournament()">Nouveau tournois</button>
                 <button id="old_tournament" class="btn" onclick="checkOldTournament()">Tournois existant</button>
+                <h4>*Retrouvez les informations d'un tournois dans vos téléchargements</h4>
                 <input type="file" id="input_loadTournament" accept="application/json" style="display:none" onchange="loadTournamentFile(event)">
             </div>
 
@@ -31,7 +32,8 @@
                         Souhaitez-vous que ce site enregistre les informations du tournois sur votre appareil ?
                     </h3>
                     <h4 style="text-align: center; margin-bottom: 60px;">
-                        (Cela vous permet de consulter d'anciens tournois et également de poursuivre le tournois en cas d'arrêt du site ou de votre appareil)
+                        (Les informations seront enregistrées dans un fichier que vous pourrez retrouver dans vos téléchargements.
+                        Cela vous permet de poursuivre le tournois en revenant sur le site en cas de problème.)
                     </h4>
                     
                     <div class="div_formElem" style="justify-content: center;">
