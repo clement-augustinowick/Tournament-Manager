@@ -1,4 +1,4 @@
-// Tests d'intégration de src/server.js : un vrai serveur est lancé (port libre, dossier maison
+// Tests d'intégration de back/server.js : un vrai serveur est lancé (port libre, dossier maison
 // temporaire) et interrogé en HTTP. Les tests `todo` décrivent un comportement attendu que le
 // code actuel ne respecte pas encore (voir tests/Tournament.test.js pour la convention).
 
@@ -49,19 +49,19 @@ describe("fichiers statiques", () => {
         assert.equal(r.status, 404);
     });
 
-    it("n'expose pas le code serveur (/src, /Tournament.js)", async () => {
+    it("n'expose pas le code serveur (/back, /Tournament.js)", async () => {
         assert.equal((await s.get("/Tournament.js")).status, 404);
         assert.equal((await s.get("/server.js")).status, 404);
     });
 
-    it("403 sur une tentative de remontée de dossier (/../src/server.js)", async () => {
-        const r = await s.raw("/../src/server.js");
+    it("403 sur une tentative de remontée de dossier (/../back/server.js)", async () => {
+        const r = await s.raw("/../back/server.js");
         assert.equal(r.status, 403);
         assert.doesNotMatch(r.text, /createServer/);
     });
 
     it("403 sur une remontée encodée (%2e%2e)", async () => {
-        const r = await s.raw("/%2e%2e/src/server.js");
+        const r = await s.raw("/%2e%2e/back/server.js");
         assert.equal(r.status, 403);
         assert.doesNotMatch(r.text, /createServer/);
     });

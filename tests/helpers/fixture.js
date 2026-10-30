@@ -1,4 +1,4 @@
-// Utilitaires partagés : lance une vraie instance de src/server.js dans un dossier
+// Utilitaires partagés : lance une vraie instance de back/server.js dans un dossier
 // temporaire, sur un port libre, avec un dossier "maison" factice pour que les
 // sauvegardes (~/Downloads) n'écrivent jamais dans votre vrai dossier Téléchargements.
 
@@ -44,7 +44,7 @@ export async function startServer() {
     await mkdir(home, { recursive: true });
 
     // Même arborescence que le vrai projet (server.js lit ../public).
-    await cp(path.join(projectRoot, "src"), path.join(tmp, "src"), { recursive: true });
+    await cp(path.join(projectRoot, "back"), path.join(tmp, "back"), { recursive: true });
     await cp(path.join(projectRoot, "public"), path.join(tmp, "public"), { recursive: true });
     await writeFile(path.join(tmp, "package.json"), '{"type":"module"}');
 
@@ -54,7 +54,7 @@ export async function startServer() {
 
     // Le port 3000 est codé en dur dans server.js : on le rend configurable
     // dans la COPIE de test uniquement (votre fichier n'est pas modifié).
-    const serverPath = path.join(tmp, "src", "server.js");
+    const serverPath = path.join(tmp, "back", "server.js");
     let code = await readFile(serverPath, "utf8");
     code = code.replace(
         /server\.listen\(\s*(?:process\.env\.PORT\s*\|\|\s*)?3000/,
