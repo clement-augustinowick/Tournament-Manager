@@ -9,7 +9,8 @@
     "test:unit": "node --test tests/tournament.test.js",
     "test:api": "node --test tests/server.test.js",
     "test:e2e": "node --test tests/e2e.test.js",
-    "test:ga": "node --test tests/goalAverage.test.js"
+    "test:ga": "node --test tests/goalAverage.test.js",
+    "test:lv": "node --test tests/loadValidation.test.js"
   },
   "devDependencies": {
     "playwright": "^1.56.0"
