@@ -59,7 +59,7 @@ export class Tournament {
             throw new Error("Les noms d'équipes doivent être uniques.");
         }
 
-        this.teamsList = teams.map((team, index) => ({
+        const teamsList = teams.map((team, index) => ({
             ...defaultTeam,
             name: names[index],
             teamNumber: Number(team.teamNumber) || index + 1
@@ -193,7 +193,8 @@ export class Tournament {
         const loserState = this.teamsList.find(t => t.teamNumber === loser.teamNumber);
 
         winnerState.nbSetWon += 1;
-        loserState.goalAverage += goalAverage;
+        winnerState.goalAverage += goalAverage;
+        loserState.goalAverage -= goalAverage;
 
         const matchWinner = this.checkMatchEnded(match);
         if (matchWinner) {
