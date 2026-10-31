@@ -499,13 +499,153 @@ describe("Tournament.addSet()", () => {
         const l = t.teamsList.find(x => x.teamNumber === m.team2.teamNumber);
         assert.ok(w.goalAverage > l.goalAverage);
     });
+});
 
-    it("score trop élevé : 30-5 avec 5 points et 2 d'écart devrait être refusé", {
-        todo: "Seuls le minimum de points et l'écart minimum sont vérifiés, pas le fait que le set s'arrête "
-            + "dès que (points cible atteints ET écart atteint). À valider selon vos règles."
+describe("Tournament.addSet() - fin de set (points requis + écart)", () => {
+    // Règle : un set s'arrête dès qu'une équipe a atteint les points requis ET mène d'au moins
+    // l'écart demandé. Le score du gagnant est donc exactement max(points requis, perdant + écart).
+    const winnerScore = (target, spread, loser) => Math.max(target, loser + spread);
+
+    const configs = [
+        { nbSetPoint: 5, pointSpread: 2 },   // ex. 5-3, 6-4, 7-5...
+        { nbSetPoint: 5, pointSpread: 1 },   // pas de prolongation sauf 5-5 => 6-5
+        { nbSetPoint: 10, pointSpread: 3 },
+        { nbSetPoint: 25, pointSpread: 2 }   // volley
+    ];
+
+    // Joue un seul set sur un match neuf ; `swap` met le gagnant en équipe 2.
+    function playSet(config, winner, loser, swap = false) {
+        const t = makeTournament(4, { ...config, nbGameSet: 5 });
+        const id = allMatches(t)[0].id;
+        return t.addSet(1, id, swap ? loser : winner, swap ? winner : loser);
+    }
+
+    for (const config of configs) {
+        const { nbSetPoint: target, pointSpread: spread } = config;
+        const label = `${target} points, ${spread} d'écart`;
+        const losers = Array.from({ length: target + 4 }, (_, i) => i); // 0 .. target+3
+
+        it(`${label} : accepte tous les scores finaux valides (dans les deux sens)`, () => {
+            for (const loser of losers) {
+                const winner = winnerScore(target, spread, loser);
+                for (const swap of [false, true]) {
+                    assert.doesNotThrow(
+                        () => playSet(config, winner, loser, swap),
+                        `${winner}-${loser}${swap ? " (équipe 2 gagnante)" : ""} devrait être accepté`
+                    );
+                }
+            }
+        });
+
+        it(`${label} : refuse un score trop faible (points ou écart manquants)`, () => {
+            for (const loser of losers) {
+                const tooLow = winnerScore(target, spread, loser) - 1;
+                for (const swap of [false, true]) {
+                    assert.throws(
+                        () => playSet(config, tooLow, loser, swap),
+                        `${tooLow}-${loser} devrait être refusé`
+                    );
+                }
+            }
+        });
+
+        it(`BUG: ${label} : refuse un score qui dépasse le nécessaire`, {
+            todo: "addSet ne vérifie que « au moins N points » et « au moins X d'écart », jamais que le set "
+                + "aurait déjà dû s'arrêter : 6-3 (5 pts, 2 d'écart) ou 30-5 sont acceptés"
+        }, () => {
+            for (const loser of losers) {
+                const tooHigh = winnerScore(target, spread, loser) + 1;
+                for (const swap of [false, true]) {
+                    assert.throws(
+                        () => playSet(config, tooHigh, loser, swap),
+                        `${tooHigh}-${loser} devrait être refusé (le set était fini à ${winnerScore(target, spread, loser)}-${loser})`
+                    );
+                }
+            }
+        });
+    }
+
+    it("exemples concrets (5 points, 2 d'écart)", () => {
+        const cfg = { nbSetPoint: 5, pointSpread: 2 };
+        // valides
+        for (const [w, l] of [[5, 0], [5, 3], [6, 4], [7, 5], [12, 10]]) {
+            assert.doesNotThrow(() => playSet(cfg, w, l), `${w}-${l}`);
+        }
+        // refusés : trop faibles
+        for (const [w, l] of [[4, 2], [5, 4], [6, 5], [11, 10]]) {
+            assert.throws(() => playSet(cfg, w, l), `${w}-${l}`);
+        }
+    });
+
+    it("BUG: exemples concrets de scores trop élevés (5 points, 2 d'écart)", {
+        todo: "voir le test précédent : aucun contrôle de dépassement"
     }, () => {
-        const t = makeTournament(4, { nbSetPoint: 5, pointSpread: 2 });
-        assert.throws(() => t.addSet(1, firstMatch(t).id, 30, 5));
+        const cfg = { nbSetPoint: 5, pointSpread: 2 };
+        for (const [w, l] of [[6, 0], [6, 3], [7, 4], [8, 5], [30, 5]]) {
+            assert.throws(() => playSet(cfg, w, l), `${w}-${l}`);
+        }
+    });
+});
+
+describe("Tournament.addSet() - round courant", () => {
+    const matchOfRound = (t, round) => t.matches[round - 1].matches[0];
+
+    it("démarre au round 1", () => {
+        assert.equal(makeTournament(4).currentRound, 1);
+        assert.equal(makeTournament(4).getState().currentRound, 1);
+    });
+
+    it("mémorise le round du set enregistré (visible dans getState)", () => {
+        const t = makeTournament(4, { nbGameSet: 2 });
+        t.addSet(2, matchOfRound(t, 2).id, 5, 0);
+        assert.equal(t.currentRound, 2);
+        assert.equal(t.getState().currentRound, 2);
+    });
+
+    it("suit le dernier round joué, dans les deux sens", () => {
+        const t = makeTournament(4, { nbGameSet: 2 });
+        t.addSet(3, matchOfRound(t, 3).id, 5, 0);
+        assert.equal(t.currentRound, 3);
+        t.addSet(1, matchOfRound(t, 1).id, 5, 0);
+        assert.equal(t.currentRound, 1);
+    });
+
+    it("le round mémorisé survit à un aller-retour save/load", () => {
+        const a = makeTournament(4, { nbGameSet: 2 });
+        a.addSet(2, matchOfRound(a, 2).id, 5, 0);
+        const b = new Tournament();
+        b.loadState(JSON.parse(JSON.stringify(a.getState())));
+        assert.equal(b.currentRound, 2);
+    });
+
+    it("configure() remet le round courant à 1", () => {
+        const t = makeTournament(4, { nbGameSet: 2 });
+        t.addSet(3, matchOfRound(t, 3).id, 5, 0);
+        t.configure(defaultConfig);
+        assert.equal(t.currentRound, 1);
+    });
+
+    it("BUG: un round inexistant ne doit pas modifier le round courant", {
+        todo: "addSet exécute `this.currentRound = Number(roundId)` AVANT de vérifier que le round existe : "
+            + "addSet(99, ...) lève « Round introuvable » mais laisse currentRound à 99 (et à NaN pour un id non numérique). "
+            + "Piste : déplacer cette ligne après la recherche du round et du match (ou à la fin, après la validation)."
+    }, () => {
+        const t = makeTournament(4);
+        assert.throws(() => t.addSet(99, 1, 5, 0), /Round introuvable/);
+        assert.equal(t.currentRound, 1);
+        assert.throws(() => t.addSet("abc", 1, 5, 0), /Round introuvable/);
+        assert.equal(t.currentRound, 1);
+    });
+
+    it("BUG: un fichier chargé avec un round hors limites devrait revenir à un round existant", {
+        todo: "loadState fait `Number(currentRound) || 1` sans vérifier que le round existe : avec currentRound = 99 "
+            + "le front cache tous les rounds (aucun n'a id 99)"
+    }, () => {
+        const data = makeTournament(4).getState();
+        data.currentRound = 99;
+        const t = new Tournament();
+        t.loadState(data);
+        assert.ok(t.matches.some(r => r.id === t.currentRound));
     });
 });
 

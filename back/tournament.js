@@ -146,6 +146,7 @@ export class Tournament {
         const match = round.matches.find(m => m.id === Number(matchId));
         if (!match) throw new Error("Match introuvable.");
 
+        this.currentRound = Number(roundId);
         score1 = Number(score1);
         score2 = Number(score2);
 

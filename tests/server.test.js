@@ -235,6 +235,32 @@ describe("POST /api/matches/:round/:match/score", () => {
         assert.equal(r.status, 400);
     });
 
+    it("renvoie currentRound = round du set enregistré, et le conserve", async () => {
+        const { json } = await setup(4);
+        const m = json.state.matches[1].matches[0];
+        const r = await s.post(`/api/matches/2/${m.id}/score`, { score1: 5, score2: 0 });
+        assert.equal(r.json.state.currentRound, 2);
+        assert.equal((await s.get("/api/state")).json.state.currentRound, 2);
+    });
+
+    it("le round sauvegardé est celui du dernier set (fichier de sauvegarde)", async () => {
+        await s.post("/api/save", { save: true });
+        const { json } = await setup(4, { nbGameSet: 2 });
+        const m = json.state.matches[2].matches[0];
+        await s.post(`/api/matches/3/${m.id}/score`, { score1: 5, score2: 0 });
+        const file = path.join(s.downloads, (await readdir(s.downloads))[0]);
+        assert.equal(JSON.parse(await readFile(file, "utf8")).currentRound, 3);
+    });
+
+    it("BUG: une requête sur un round inexistant (400) ne doit pas changer le round courant", {
+        todo: "addSet modifie currentRound avant de valider le round (voir tests/tournament.test.js)"
+    }, async () => {
+        await setup(4);
+        const r = await s.post("/api/matches/99/1/score", { score1: 5, score2: 0 });
+        assert.equal(r.status, 400);
+        assert.equal((await s.get("/api/state")).json.state.currentRound, 1);
+    });
+
     it("404 si les identifiants ne sont pas numériques", async () => {
         await setup(4);
         const r = await s.post("/api/matches/a/b/score", { score1: 5, score2: 0 });

@@ -111,6 +111,10 @@ describe("E2E - écran d'accueil", opts, () => {
         assert.equal(await visible("#overlayAskingSave"), false);
     });
 
+    it("Aucune erreur JavaScript au chargement de la page", async () => {
+        assert.deepEqual(pageErrors, []);
+    });
+
     it("« Nouveau tournois » ouvre la fenêtre de sauvegarde, ✖ la ferme", async () => {
         await page.click("#new_tournament");
         assert.equal(await visible("#overlayAskingSave"), true);
@@ -448,6 +452,59 @@ describe("E2E - saisie des résultats", opts, () => {
         assert.equal(await page.inputValue("#inputTeam1"), "0");
         assert.equal(await page.inputValue("#inputTeam2"), "0");
     });
+
+    it("saisir des sets sur plusieurs rounds en naviguant dans les deux sens", async () => {
+        const next = '.btn_navigation:has-text(">")';
+        const prev = '.btn_navigation:has-text("<")';
+        const current = () => text(".div_round:not(.hidden) h3");
+
+        await page.click(next);                       // round 2
+        const [t2] = (await openMatch(0)).split(" VS ");
+        await enterSet(5, 0);
+        await waitText("#p_nbSetTeam1", 1);
+        await page.click("#overlayInputResult .btn_closeOverlay");
+        assert.equal(await current(), "Round 2");
+
+        await page.click(prev);                       // retour au round 1
+        const [t1] = (await openMatch(0)).split(" VS ");
+        await enterSet(5, 0);
+        await waitText("#p_nbSetTeam1", 1);
+        await page.click("#overlayInputResult .btn_closeOverlay");
+        assert.equal(await current(), "Round 1");
+
+        await page.click(next);
+        await page.click(next);                       // round 3
+        await openMatch(0);
+        await enterSet(5, 0);
+        await waitText("#p_nbSetTeam1", 1);
+        await page.click("#overlayInputResult .btn_closeOverlay");
+
+        assert.deepEqual(dialogs, [], `alerte inattendue : ${dialogs[0]}`);
+        assert.equal(await current(), "Round 3");
+        assert.equal((await stat(t1, "NbSetWon")).trim() >= "1", true);
+        assert.equal((await stat(t2, "NbSetWon")).trim() >= "1", true);
+    });
+
+    it("saisir un set sur un round > 1 devrait mettre l'interface à jour", async () => {
+        await page.click('.btn_navigation:has-text(">")');
+        const [team1] = (await openMatch(0)).split(" VS ");
+        await enterSet(5, 0);
+        await page.waitForTimeout(500);
+        assert.deepEqual(dialogs, [], `alerte inattendue : ${dialogs[0]}`);
+        assert.equal(await text("#p_nbSetTeam1"), "1");
+        assert.equal((await stat(team1, "NbSetWon")).trim(), "1");
+    });
+
+    it("saisir un 2e set sur un round > 1 devrait fonctionner", async () => {
+        await page.click('.btn_navigation:has-text(">")');
+        await openMatch(0);
+        await enterSet(5, 0);
+        await waitText("#p_nbSetTeam1", 1);
+        await enterSet(5, 0);
+        await page.waitForTimeout(500);
+        assert.deepEqual(dialogs, [], `alerte inattendue : ${dialogs[0]}`);
+        assert.equal(await text("#p_nbSetTeam1"), "2");
+    });
 });
 
 describe("E2E - classement", opts, () => {
@@ -564,6 +621,23 @@ describe("E2E - reprise d'un tournoi existant", opts, () => {
             assert.equal(await visible("#div_PLAY"), false);
         });
     }
+
+    it("reprend sur le round de la dernière saisie, et la navigation fonctionne ensuite", async () => {
+        const t = new Tournament();
+        t.setTeams(sampleTeams(4));
+        t.configure({ ...defaultConfig, nbGameSet: 2 });
+        t.addSet(2, t.matches[1].matches[0].id, 5, 0);
+
+        await upload(t.getState());
+        await page.locator("#div_PLAY").waitFor({ state: "visible" });
+        const current = () => text(".div_round:not(.hidden) h3");
+
+        assert.equal(await page.locator(".div_round:not(.hidden)").count(), 1);
+        assert.equal(await current(), "Round 2");
+
+        await page.click('.btn_navigation:has-text("<")');
+        assert.equal(await current(), "Round 1");
+    });
 
     it("annuler la sélection (aucun fichier) ne fait rien", async () => {
         await page.setInputFiles("#input_loadTournament", []);

@@ -482,21 +482,3 @@ async function CalculateRanking() {
         showError(error);
     }
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-window.newTournament = newTournament;
-window.checkOldTournament = checkOldTournament;
-window.loadTournamentFile = loadTournamentFile;
-window.AddTeamToList = AddTeamToList;
-window.RemoveTeamFromList = RemoveTeamFromList;
-window.DisplayTeamsList = DisplayTeamsList;
-window.MoveToTournamentSpecForm = MoveToTournamentSpecForm;
-window.GetTournamentInfos = GetTournamentInfos;
-window.PreviousRound = PreviousRound;
-window.NextRound = NextRound;
-window.ShowMatchOverlay = ShowMatchOverlay;
-window.CloseMatchOverlay = CloseMatchOverlay;
-window.CloseRankOverlay = CloseRankOverlay;
-window.ValidInputSetResult = ValidInputSetResult;
-window.CalculateRanking = CalculateRanking;
