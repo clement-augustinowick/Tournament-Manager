@@ -230,9 +230,7 @@ describe("Tournament.configure()", () => {
         assert.equal(t.currentRound, 1);
     });
 
-    it("BUG: reconfigurer devrait remettre les stats des équipes à zéro", {
-        todo: "configure() régénère les matchs mais conserve nbVictory/nbSetWon/goalAverage des parties précédentes"
-    }, () => {
+    it("reconfigurer devrait remettre les stats des équipes à zéro", () => {
         const t = makeTournament(3);
         const m = allMatches(t)[0];
         t.addSet(1, m.id, 5, 0);
@@ -240,11 +238,40 @@ describe("Tournament.configure()", () => {
         assert.ok(t.teamsList.every(x => x.nbVictory === 0 && x.nbSetWon === 0 && x.goalAverage === 0));
     });
 
-    it("ne laisse pas un état à moitié configuré si le type est inconnu", () => {
-        const t = makeTournament(4);
-        assert.throws(() => t.configure({ ...defaultConfig, tournamentType: "SimpleKO" }));
-        // les infos ont été écrasées avant l'erreur : on documente le comportement réel
-        assert.equal(t.tournamentInfos.tournamentType, "SimpleKO");
+    it("un type inconnu est refusé SANS rien modifier (configuration atomique)", () => {
+        const t = makeTournament(4, { nbGameSet: 2, nbSetPoint: 21 });
+        t.addSet(1, allMatches(t)[0].id, 21, 0);
+        const before = JSON.stringify(t.getState());
+
+        assert.throws(() => t.configure({ ...defaultConfig, tournamentType: "SimpleKO" }), /n'a pas été implémenté/);
+        assert.equal(JSON.stringify(t.getState()), before);
+    });
+
+    it("des paramètres invalides sont refusés SANS rien modifier", () => {
+        const t = makeTournament(4, { nbGameSet: 2 });
+        t.addSet(1, allMatches(t)[0].id, 5, 0);
+        const before = JSON.stringify(t.getState());
+
+        assert.throws(() => t.configure({ ...defaultConfig, nbSetPoint: 0 }));
+        assert.equal(JSON.stringify(t.getState()), before);
+    });
+
+    it("reconfigurer efface aussi les sets joués et ne garde que les nouveaux matchs", () => {
+        const t = makeTournament(4, { nbGameSet: 2 });
+        t.addSet(1, allMatches(t)[0].id, 5, 0);
+        t.configure({ ...defaultConfig, nbGameSet: 3 });
+        assert.ok(allMatches(t).every(m => m.set.length === 0));
+        assert.ok(allMatches(t).every(m => m.team1.nbSetWon === 0 && m.team2.nbSetWon === 0));
+        assert.equal(t.tournamentInfos.nbGameSet, 3);
+    });
+
+    it("reconfigurer permet de rejouer : les victoires repartent de 0", () => {
+        const t = makeTournament(3, { nbGameSet: 1 });
+        const m = allMatches(t)[0];
+        t.addSet(1, m.id, 5, 0);
+        t.configure({ ...defaultConfig, nbGameSet: 1 });
+        t.addSet(1, allMatches(t)[0].id, 5, 0);
+        assert.equal(t.teamsList.reduce((sum, x) => sum + x.nbVictory, 0), 1);
     });
 });
 
@@ -784,10 +811,7 @@ describe("Tournament.loadState()", () => {
         assert.equal(JSON.stringify(t.getState()), before);
     });
 
-    it("BUG: un fichier dont les matchs sont corrompus devrait être refusé", {
-        todo: "loadState ne vérifie que la forme du premier niveau : des matchs sans team1/team2/set sont acceptés "
-            + "puis font planter addSet/affichage"
-    }, () => {
+    it("un fichier dont les matchs sont corrompus devrait être refusé", () => {
         const data = makeTournament(4).getState();
         data.matches = [{ id: 1, matches: [{ id: 1 }] }];
         const t = new Tournament();

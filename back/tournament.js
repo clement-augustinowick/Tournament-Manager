@@ -93,6 +93,12 @@ export class Tournament {
             throw new Error("Les paramètres du tournoi doivent être des nombres entiers supérieurs à 0.");
         }
 
+        const generator = this.tournamentGenerators[tournamentType];
+        if (!generator) {
+            throw new Error(`Le type "${tournamentType}" n'a pas été implémenté.`);
+        }
+
+        // À partir d'ici tout est valide : on peut modifier l'état.
         this.tournamentInfos = {
             tournamentType,
             nbGame: nbGame || 1,
@@ -102,10 +108,12 @@ export class Tournament {
             pointSpread
         };
 
-        const generator = this.tournamentGenerators[tournamentType];
-        if (!generator) {
-            throw new Error(`Le type "${tournamentType}" n'a pas été implémenté.`);
-        }
+        this.teamsList = this.teamsList.map(team => ({
+            ...team,
+            nbVictory: 0,
+            nbSetWon: 0,
+            goalAverage: 0
+        }));
 
         this.currentRound = 1;
         this.matches = [];
