@@ -207,8 +207,8 @@ async function GetTournamentInfos() {
     const nbSetPoint = document.getElementById("input_nbSetPoint").valueAsNumber;
     const pointSpread = document.getElementById("input_pointSpread").valueAsNumber;
 
-    if (nbSetPoint < pointSpread){
-        alert("Le nombre de point nécessaire pour gagner une manche/un set doit être supérieur au nombre de point d'écart nécessaire pour gagner.");
+    if (pointSpread > nbSetPoint){
+        alert("Le nombre de point nécessaire pour gagner une manche/un set doit être supérieur ou égale au nombre de point d'écart nécessaire pour gagner.");
         return;
     }
 

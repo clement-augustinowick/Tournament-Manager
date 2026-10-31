@@ -273,6 +273,24 @@ describe("Tournament.configure()", () => {
         t.addSet(1, allMatches(t)[0].id, 5, 0);
         assert.equal(t.teamsList.reduce((sum, x) => sum + x.nbVictory, 0), 1);
     });
+
+    it("refuse un écart supérieur au nombre de points d'un set", () => {
+        const t = new Tournament();
+        t.setTeams(sampleTeams(3));
+        assert.throws(
+            () => t.configure({ ...defaultConfig, nbSetPoint: 3, pointSpread: 5 }),
+            /écart ne peut pas dépasser/
+        );
+        assert.deepEqual(t.matches, []);
+    });
+
+    it("accepte un écart égal au nombre de points (limite) ou inférieur", () => {
+        for (const [points, spread] of [[3, 3], [5, 2], [25, 2], [1, 1]]) {
+            const t = new Tournament();
+            t.setTeams(sampleTeams(3));
+            assert.doesNotThrow(() => t.configure({ ...defaultConfig, nbSetPoint: points, pointSpread: spread }), `${points}/${spread}`);
+        }
+    });
 });
 
 describe("Tournament.generateRoundRobin()", () => {

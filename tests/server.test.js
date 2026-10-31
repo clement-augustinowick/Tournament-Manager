@@ -176,6 +176,12 @@ describe("POST /api/tournament", () => {
         const r = await setup(4, { nbSetPoint: "abc" });
         assert.equal(r.status, 400);
     });
+
+    it("400 si l'écart dépasse le nombre de points d'un set (même sans passer par le navigateur)", async () => {
+        const r = await setup(4, { nbSetPoint: 3, pointSpread: 5 });
+        assert.equal(r.status, 400);
+        assert.match(r.json.error, /écart ne peut pas dépasser/);
+    });
 });
 
 describe("GET /api/state et /api/ranking", () => {

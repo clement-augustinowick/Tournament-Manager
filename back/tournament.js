@@ -93,6 +93,10 @@ export class Tournament {
             throw new Error("Les paramètres du tournoi doivent être des nombres entiers supérieurs à 0.");
         }
 
+        if (pointSpread > nbSetPoint) {
+            throw new Error("Le nombre de points d'écart ne peut pas dépasser le nombre de points d'un set.");
+        }
+
         const generator = this.tournamentGenerators[tournamentType];
         if (!generator) {
             throw new Error(`Le type "${tournamentType}" n'a pas été implémenté.`);

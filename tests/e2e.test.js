@@ -255,11 +255,12 @@ describe("E2E - choix du type de tournoi", opts, () => {
         assert.equal(await visible("#div_PLAY"), false);
     });
 
-    it("des paramètres à 0 affichent l'erreur du serveur", async () => {
-        await page.fill("#input_nbSetPoint", "0");
+    it("un nombre de sets à 0 affiche l'erreur du serveur", async () => {
+        await page.fill("#input_nbGameSet", "0");
         await page.click("#btn_TournamentTypeValidation");
         await waitDialog();
         assert.match(dialogs[0], /supérieurs à 0/);
+        assert.equal(await visible("#div_PLAY"), false);
     });
 
     it("envoie les valeurs saisies au serveur", async () => {
@@ -281,6 +282,48 @@ describe("E2E - choix du type de tournoi", opts, () => {
         await waitDialog();
         assert.match(dialogs[0], /supérieurs à 0/);
         assert.equal(await visible("#div_PLAY"), false);
+    });
+
+    it("un écart supérieur au nombre de points est refusé par le navigateur, sans appel au serveur", async () => {
+        const requests = [];
+        page.on("request", r => { if (r.url().includes("/api/tournament")) requests.push(r); });
+
+        await page.fill("#input_nbSetPoint", "3");
+        await page.fill("#input_pointSpread", "5");
+        await page.click("#btn_TournamentTypeValidation");
+        await waitDialog();
+        await page.waitForTimeout(200);
+
+        assert.match(dialogs[0], /supérieur ou égale au nombre de point d'écart/);
+        assert.equal(requests.length, 0, "aucune requête ne doit partir");
+        assert.equal(await visible("#form_selectTournamentSpec"), true);
+        assert.equal(await visible("#div_PLAY"), false);
+    });
+
+    it("un écart égal au nombre de points est accepté (limite)", async () => {
+        await page.fill("#input_nbSetPoint", "3");
+        await page.fill("#input_pointSpread", "3");
+        await page.click("#btn_TournamentTypeValidation");
+        await page.locator("#div_PLAY").waitFor({ state: "visible" });
+        assert.deepEqual(dialogs, []);
+    });
+
+    it("un écart inférieur au nombre de points est accepté", async () => {
+        await page.fill("#input_nbSetPoint", "25");
+        await page.fill("#input_pointSpread", "2");
+        await page.click("#btn_TournamentTypeValidation");
+        await page.locator("#div_PLAY").waitFor({ state: "visible" });
+        assert.deepEqual(dialogs, []);
+    });
+
+    it("après un refus, corriger les valeurs permet de continuer", async () => {
+        await page.fill("#input_nbSetPoint", "3");
+        await page.fill("#input_pointSpread", "5");
+        await page.click("#btn_TournamentTypeValidation");
+        await waitDialog();
+        await page.fill("#input_pointSpread", "2");
+        await page.click("#btn_TournamentTypeValidation");
+        await page.locator("#div_PLAY").waitFor({ state: "visible" });
     });
 });
 
