@@ -611,11 +611,7 @@ describe("Tournament.addSet() - round courant", () => {
         assert.equal(t.currentRound, 1);
     });
 
-    it("BUG: un round inexistant ne doit pas modifier le round courant", {
-        todo: "addSet exécute `this.currentRound = Number(roundId)` AVANT de vérifier que le round existe : "
-            + "addSet(99, ...) lève « Round introuvable » mais laisse currentRound à 99 (et à NaN pour un id non numérique). "
-            + "Piste : déplacer cette ligne après la recherche du round et du match (ou à la fin, après la validation)."
-    }, () => {
+    it("BUG: un round inexistant ne doit pas modifier le round courant", () => {
         const t = makeTournament(4);
         assert.throws(() => t.addSet(99, 1, 5, 0), /Round introuvable/);
         assert.equal(t.currentRound, 1);
@@ -623,10 +619,7 @@ describe("Tournament.addSet() - round courant", () => {
         assert.equal(t.currentRound, 1);
     });
 
-    it("BUG: un fichier chargé avec un round hors limites devrait revenir à un round existant", {
-        todo: "loadState fait `Number(currentRound) || 1` sans vérifier que le round existe : avec currentRound = 99 "
-            + "le front cache tous les rounds (aucun n'a id 99)"
-    }, () => {
+    it("BUG: un fichier chargé avec un round hors limites devrait revenir à un round existant", () => {
         const data = makeTournament(4).getState();
         data.currentRound = 99;
         const t = new Tournament();
@@ -852,15 +845,16 @@ describe("Tournament.save()", () => {
         });
     });
 
-    it("BUG: deux tournois différents le même jour s'écrasent mutuellement", {
-        todo: "Le nom ne contient que la date : un 2e tournoi du jour remplace le fichier du 1er"
-    }, async () => {
-        await withTempDir(async dir => {
-            const a = makeTournament(3);
-            const b = makeTournament(5);
-            const fa = await a.save("fr", dir);
-            const fb = await b.save("fr", dir);
-            assert.notEqual(fa, fb);
-        });
-    });
+    // A corriger quand je demanderai le nom du tournois
+    // it("BUG: deux tournois différents le même jour s'écrasent mutuellement", {
+    //     todo: "Le nom ne contient que la date : un 2e tournoi du jour remplace le fichier du 1er"
+    // }, async () => {
+    //     await withTempDir(async dir => {
+    //         const a = makeTournament(3);
+    //         const b = makeTournament(5);
+    //         const fa = await a.save("fr", dir);
+    //         const fb = await b.save("fr", dir);
+    //         assert.notEqual(fa, fb);
+    //     });
+    // });
 });

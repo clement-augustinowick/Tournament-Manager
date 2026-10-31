@@ -139,7 +139,9 @@ export class Tournament {
         this.teamsList = structuredClone(teamsList);
         this.tournamentInfos = structuredClone(tournamentInfos);
         this.matches = structuredClone(matches);
-        this.currentRound = Number(currentRound) || 1;
+        
+        const savedRound = Number(currentRound);
+        this.currentRound = this.matches.some(round => round.id === savedRound) ? savedRound : 1;
 
         this.saving = true;
 
@@ -155,7 +157,6 @@ export class Tournament {
         const match = round.matches.find(m => m.id === Number(matchId));
         if (!match) throw new Error("Match introuvable.");
 
-        this.currentRound = Number(roundId);
         score1 = Number(score1);
         score2 = Number(score2);
 
@@ -211,6 +212,8 @@ export class Tournament {
         if (matchWinner) {
             winnerState.nbVictory += 1;
         }
+
+        this.currentRound = Number(roundId);
 
         return this.getState();
     }
