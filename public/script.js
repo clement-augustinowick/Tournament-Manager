@@ -204,6 +204,14 @@ select.addEventListener("change", function () {
 });
 
 async function GetTournamentInfos() {
+    const nbSetPoint = document.getElementById("input_nbSetPoint").valueAsNumber;
+    const pointSpread = document.getElementById("input_pointSpread").valueAsNumber;
+
+    if (nbSetPoint < pointSpread){
+        alert("Le nombre de point nécessaire pour gagner une manche/un set doit être supérieur au nombre de point d'écart nécessaire pour gagner.");
+        return;
+    }
+
     try {
         const result = await api("/api/tournament", {
             method: "POST",
@@ -211,8 +219,8 @@ async function GetTournamentInfos() {
                 tournamentType: select.value,
                 nbGame: document.getElementById("input_nbGame").valueAsNumber,
                 nbGameSet: document.getElementById("input_nbGameSet").valueAsNumber,
-                nbSetPoint: document.getElementById("input_nbSetPoint").valueAsNumber,
-                pointSpread: document.getElementById("input_pointSpread").valueAsNumber
+                nbSetPoint: nbSetPoint,
+                pointSpread: pointSpread
             })
         });
 

@@ -42,12 +42,19 @@ function sendJson(res, status, data) {
 }
 
 async function serveStatic(req, res) {
-    let requested = req.url === "/" ? "/index.html" : req.url;
-    requested = decodeURIComponent(requested.split("?")[0]);
+    let requested;
+    try {
+        requested = decodeURIComponent(req.url.split("?")[0]);
+    } catch {
+        res.writeHead(400);
+        return res.end("Bad request");
+    }
+
+    if (requested === "/") requested = "/index.html";
 
     const filePath = path.normalize(path.join(publicDir, requested));
 
-    if (!filePath.startsWith(publicDir)) {
+    if (!filePath.startsWith(publicDir + path.sep)) {
         res.writeHead(403);
         return res.end("Forbidden");
     }
@@ -154,7 +161,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         if (req.method === "GET") {
-            return serveStatic(req, res);
+            return await serveStatic(req, res);
         }
 
         return sendJson(res, 404, { success: false, error: "Route inconnue." });

@@ -66,22 +66,42 @@ describe("fichiers statiques", () => {
         assert.doesNotMatch(r.text, /createServer/);
     });
 
-    it("BUG: ne doit pas servir un dossier frère dont le nom commence par 'public'", {
-        todo: "filePath.startsWith(publicDir) accepte /…/public-evil/ ; il faut comparer avec publicDir + path.sep"
-    }, async () => {
-        const r = await s.raw("/../public-evil/secret.txt");
-        assert.notEqual(r.text, "SECRET");
+    it("403 sur un dossier frère dont le nom commence par 'public' (3 écritures du chemin)", async () => {
+        for (const url of [
+            "/../public-evil/secret.txt",
+            "/%2e%2e/public-evil/secret.txt",
+            "/..%2fpublic-evil/secret.txt"
+        ]) {
+            const r = await s.raw(url);
+            assert.equal(r.status, 403, url);
+            assert.notEqual(r.text, "SECRET", url);
+        }
     });
 
-    it("BUG: une URL mal encodée ne doit pas faire planter le serveur", {
-        todo: "decodeURIComponent lève une URIError hors du try/catch de serveStatic, "
-            + "et `return serveStatic()` n'est pas `await` : rejet non géré => le processus Node s'arrête"
-    }, async () => {
-        await s.raw("/%E0%A4%A");
-        await new Promise(r => setTimeout(r, 200));
-        assert.ok(s.alive(), "le serveur est mort après une seule requête");
-        const r = await s.get("/");
+    it("les fichiers légitimes de public/ restent servis après le durcissement", async () => {
+        for (const url of ["/", "/index.html", "/style.css", "/script.js"]) {
+            assert.equal((await s.raw(url)).status, 200, url);
+        }
+    });
+
+    it("400 (et pas de crash) pour une URL mal encodée", async () => {
+        for (const url of ["/%E0%A4%A", "/%", "/%zz", "/%c0%af", "/style.css%E0%A4%A"]) {
+            const r = await s.raw(url);
+            assert.equal(r.status, 400, url);
+            assert.ok(s.alive(), `le serveur est mort après ${url} : ${s.stderr().split("\n")[0]}`);
+        }
+        assert.equal((await s.get("/")).status, 200);
+    });
+
+    it("une URL mal encodée dans la query string ne gêne pas (elle est ignorée)", async () => {
+        assert.equal((await s.raw("/style.css?x=%E0%A4%A")).status, 200);
+        assert.ok(s.alive());
+    });
+
+    it("la page d'accueil reste servie avec une query string (/?v=1)", async () => {
+        const r = await s.raw("/?v=1");
         assert.equal(r.status, 200);
+        assert.match(r.text, /Mon gestionnaire de tournois/);
     });
 });
 
@@ -250,9 +270,7 @@ describe("POST /api/matches/:round/:match/score", () => {
         assert.equal(JSON.parse(await readFile(file, "utf8")).currentRound, 3);
     });
 
-    it("BUG: une requête sur un round inexistant (400) ne doit pas changer le round courant", {
-        todo: "addSet modifie currentRound avant de valider le round (voir tests/tournament.test.js)"
-    }, async () => {
+    it("une requête sur un round inexistant (400) ne doit pas changer le round courant", async () => {
         await setup(4);
         const r = await s.post("/api/matches/99/1/score", { score1: 5, score2: 0 });
         assert.equal(r.status, 400);
