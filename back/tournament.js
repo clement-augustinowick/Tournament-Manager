@@ -65,6 +65,13 @@ export class Tournament {
             teamNumber: Number(team.teamNumber) || index + 1
         }));
 
+        const numbers = teamsList.map(team => team.teamNumber);
+        if (new Set(numbers).size !== numbers.length) {
+            throw new Error("Les numéros d'équipes doivent être uniques.");
+        }
+
+        this.teamsList = teamsList;
+
         return this.getState();
     }
 
