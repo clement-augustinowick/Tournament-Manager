@@ -87,8 +87,10 @@ export class Tournament {
         const pointSpread = Number(info.pointSpread);
 
         if (!tournamentType) throw new Error("Type de tournoi invalide.");
-        if (nbGameSet < 1 || nbSetPoint < 1 || pointSpread < 1) {
-            throw new Error("Les paramètres du tournoi doivent être supérieurs à 0.");
+        
+        const isPositiveInteger = value => Number.isInteger(value) && value >= 1;
+        if (!isPositiveInteger(nbGameSet) || !isPositiveInteger(nbSetPoint) || !isPositiveInteger(pointSpread)) {
+            throw new Error("Les paramètres du tournoi doivent être des nombres entiers supérieurs à 0.");
         }
 
         this.tournamentInfos = {

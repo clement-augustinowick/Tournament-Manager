@@ -140,9 +140,7 @@ describe("Tournament.setTeams()", () => {
         assert.equal(t.teamsList.length, 4);
     });
 
-    it("BUG: deux équipes avec le même teamNumber devraient être refusées", {
-        todo: "setTeams ne vérifie pas l'unicité de teamNumber ; addSet retrouve les équipes par teamNumber"
-    }, () => {
+    it("deux équipes avec le même teamNumber devraient être refusées", () => {
         const t = new Tournament();
         assert.throws(() => t.setTeams([
             { name: "A", teamNumber: 1 },
@@ -177,10 +175,7 @@ describe("Tournament.configure()", () => {
             });
         }
 
-        it(`BUG: refuse ${field} = NaN / texte non numérique`, {
-            todo: "NaN < 1 vaut false : la validation laisse passer NaN (ex. \"abc\" envoyé directement à l'API ; "
-                + "le formulaire, lui, envoie null pour un champ vide, qui est converti en 0 et refusé)"
-        }, () => {
+        it(`refuse ${field} = NaN / texte non numérique`, () => {
             const t = new Tournament();
             t.setTeams(sampleTeams(3));
             assert.throws(() => t.configure({ ...defaultConfig, [field]: NaN }));

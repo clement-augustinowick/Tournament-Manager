@@ -152,9 +152,7 @@ describe("POST /api/tournament", () => {
         assert.equal(r.status, 400);
     });
 
-    it("BUG: un paramètre texte non numérique devrait être refusé", {
-        todo: "Number(\"abc\") = NaN et NaN < 1 est faux : le tournoi est créé avec nbSetPoint = NaN (sérialisé en null)"
-    }, async () => {
+    it("un paramètre texte non numérique devrait être refusé", async () => {
         const r = await setup(4, { nbSetPoint: "abc" });
         assert.equal(r.status, 400);
     });
