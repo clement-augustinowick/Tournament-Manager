@@ -482,11 +482,7 @@ describe("Tournament.addSet()", () => {
         assert.equal(total, 10);
     });
 
-    it("goalAverage : le gagnant du set devrait avoir un meilleur goal average que le perdant", {
-        todo: "Actuellement seul le PERDANT reçoit +écart (loserState.goalAverage += écart) : "
-            + "à égalité de victoires et de sets, l'équipe battue est mieux classée. "
-            + "Un goal average se calcule normalement : gagnant +écart, perdant -écart."
-    }, () => {
+    it("goalAverage : le gagnant du set devrait avoir un meilleur goal average que le perdant", () => {
         const t = makeTournament(4, { nbGameSet: 2 });
         const m = firstMatch(t);
         t.addSet(1, m.id, 5, 0);
@@ -544,10 +540,7 @@ describe("Tournament.addSet() - fin de set (points requis + écart)", () => {
             }
         });
 
-        it(`BUG: ${label} : refuse un score qui dépasse le nécessaire`, {
-            todo: "addSet ne vérifie que « au moins N points » et « au moins X d'écart », jamais que le set "
-                + "aurait déjà dû s'arrêter : 6-3 (5 pts, 2 d'écart) ou 30-5 sont acceptés"
-        }, () => {
+        it(`${label} : refuse un score qui dépasse le nécessaire`, () => {
             for (const loser of losers) {
                 const tooHigh = winnerScore(target, spread, loser) + 1;
                 for (const swap of [false, true]) {
@@ -572,9 +565,7 @@ describe("Tournament.addSet() - fin de set (points requis + écart)", () => {
         }
     });
 
-    it("BUG: exemples concrets de scores trop élevés (5 points, 2 d'écart)", {
-        todo: "voir le test précédent : aucun contrôle de dépassement"
-    }, () => {
+    it("exemples concrets de scores trop élevés (5 points, 2 d'écart)", () => {
         const cfg = { nbSetPoint: 5, pointSpread: 2 };
         for (const [w, l] of [[6, 0], [6, 3], [7, 4], [8, 5], [30, 5]]) {
             assert.throws(() => playSet(cfg, w, l), `${w}-${l}`);

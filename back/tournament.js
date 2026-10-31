@@ -183,6 +183,17 @@ export class Tournament {
             throw new Error(`Il faut au moins ${spread} point(s) d'écart.`);
         }
 
+        const winnerScore = Math.max(score1, score2);
+        const loserScore = Math.min(score1, score2);
+        const expectedWinnerScore = Math.max(target, loserScore + spread);
+
+        if (winnerScore !== expectedWinnerScore) {
+            throw new Error(
+                `Score incohérent : le set se termine dès que ${expectedWinnerScore} points sont atteints `
+                + `(${expectedWinnerScore}-${loserScore}).`
+            );
+        }
+
         match.set.push({ score1, score2 });
 
         const winner = score1 > score2 ? match.team1 : match.team2;
