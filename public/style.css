@@ -1,4 +1,4 @@
-/* 
+/*
     Clément Augustinowick
 */
 
@@ -173,6 +173,7 @@ p, li, button {
 #creation h1 {
     text-align: center;
     width: 100%;
+    margin-bottom: 50px;
 }
 
 #creation button {
@@ -388,7 +389,6 @@ li {
 .overlayHeader {
     position: relative;
     width: 100%;
-    margin-bottom: 30px;
     margin-bottom: 60px;
 }
 

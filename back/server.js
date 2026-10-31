@@ -1,0 +1,182 @@
+//
+// Clément Augustinowick
+//
+
+import http from "http";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+import { Tournament } from "./tournament.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const publicDir = path.join(__dirname, "..", "public");
+
+const tournament = new Tournament();
+
+const mimeTypes = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".svg": "image/svg+xml"
+};
+
+async function readBody(req) {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    return body ? JSON.parse(body) : {};
+}
+
+function getBrowserLanguage(req) {
+    const header = req.headers["accept-language"] || "";
+    const first = header.split(",")[0].trim();
+    return first.split("-")[0].split(";")[0].toLowerCase() || undefined;
+}
+
+function sendJson(res, status, data) {
+    res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(data));
+}
+
+async function serveStatic(req, res) {
+    let requested;
+    try {
+        requested = decodeURIComponent(req.url.split("?")[0]);
+    } catch {
+        res.writeHead(400);
+        return res.end("Bad request");
+    }
+
+    if (requested === "/") requested = "/index.html";
+
+    const filePath = path.normalize(path.join(publicDir, requested));
+
+    if (!filePath.startsWith(publicDir + path.sep)) {
+        res.writeHead(403);
+        return res.end("Forbidden");
+    }
+
+    try {
+        const data = await fs.readFile(filePath);
+        const ext = path.extname(filePath);
+        
+        res.writeHead(200, {
+            "Content-Type": mimeTypes[ext] || "application/octet-stream"
+        });
+        
+        res.end(data);
+    } catch {
+        res.writeHead(404);
+        res.end("Not found");
+    }
+}
+
+const server = http.createServer(async (req, res) => {
+    try {
+        if (req.url === "/api/save" && req.method === "POST") {
+            const body = await readBody(req);
+
+            tournament.saving = !!body.save;
+
+            return sendJson(res, 200, {
+                success: true
+            });
+        }
+
+        if (req.url === "/api/teams" && req.method === "POST") {
+            const body = await readBody(req);
+
+            tournament.setTeams(body.teams);
+
+            return sendJson(res, 200, {
+                success: true,
+                state: tournament.getState()
+            });
+        }
+
+        if (req.url === "/api/load" && req.method === "POST") {
+            const body = await readBody(req);
+
+            tournament.loadState(body.state);
+
+            return sendJson(res, 200, {
+                success: true,
+                state: tournament.getState()
+            });
+        }
+
+        if (req.url === "/api/tournament" && req.method === "POST") {
+            const body = await readBody(req);
+
+            tournament.configure(body);
+            
+            if (tournament.saving){
+                await tournament.save(getBrowserLanguage(req));
+            }
+            
+            return sendJson(res, 200, {
+                success: true,
+                state: tournament.getState()
+            });
+        }
+
+        const scoreMatch = req.url.match(/^\/api\/matches\/(\d+)\/(\d+)\/score$/);
+        if (scoreMatch && req.method === "POST") {
+            
+            const [, roundId, matchId] = scoreMatch;
+            const body = await readBody(req);
+
+            tournament.addSet(
+                roundId,
+                matchId,
+                body.score1,
+                body.score2
+            );
+
+            if (tournament.saving){
+                await tournament.save(getBrowserLanguage(req));
+            }
+            
+            return sendJson(res, 200, {
+                success: true,
+                state: tournament.getState()
+            });
+        }
+
+        if (req.url === "/api/state" && req.method === "GET") {
+            return sendJson(res, 200, {
+                success: true,
+                state: tournament.getState()
+            });
+        }
+
+        if (req.url === "/api/ranking" && req.method === "GET") {
+            return sendJson(res, 200, {
+                success: true,
+                ranking: tournament.getRanking()
+            });
+        }
+
+        if (req.method === "GET") {
+            return await serveStatic(req, res);
+        }
+
+        return sendJson(res, 404, { success: false, error: "Route inconnue." });
+
+    } catch (error) {
+
+        console.error(error);
+        return sendJson(res, 400, {
+            success: false,
+            error: error.message
+        });
+        
+    }
+});
+
+server.listen(3000, () => {
+    console.log("Gestionnaire de tournois : http://localhost:3000");
+});
