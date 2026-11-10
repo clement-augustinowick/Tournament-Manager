@@ -3,7 +3,6 @@
 //     npm install -D playwright && npx playwright install chromium
 
 import assert from "node:assert/strict";
-import { readdir } from "node:fs/promises";
 import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { Tournament } from "../back/tournament.js";
 import { defaultConfig, sampleTeams, startServer } from "./helpers/fixture.js";
@@ -123,21 +122,18 @@ describe("E2E - écran d'accueil", opts, () => {
         assert.equal(await visible("#creation"), true);
     });
 
-    it("« Non » : passe à l'ajout d'équipes et envoie save=false", async () => {
+    it("« Non » : passe à l'ajout d'équipes", async () => {
         await page.click("#new_tournament");
-        const req = page.waitForRequest("**/api/save");
         await page.click('#div_overlayAskingSave .btn:has-text("Non")');
-        assert.deepEqual((await req).postDataJSON(), { save: false });
         await page.locator("#form_addTeams").waitFor({ state: "visible" });
         assert.equal(await visible("#creation"), false);
         assert.equal(await visible("#overlayAskingSave"), false);
     });
 
-    it("« Oui » : envoie save=true", async () => {
+    it("« Oui » : passe aussi à l'ajout d'équipes", async () => {
         await page.click("#new_tournament");
-        const req = page.waitForRequest("**/api/save");
         await page.click('#div_overlayAskingSave .btn:has-text("Oui")');
-        assert.deepEqual((await req).postDataJSON(), { save: true });
+        await page.locator("#form_addTeams").waitFor({ state: "visible" });
     });
 });
 
@@ -274,6 +270,7 @@ describe("E2E - choix du type de tournoi", opts, () => {
         assert.equal(body.nbGameSet, 3);
         assert.equal(body.nbSetPoint, 21);
         assert.equal(body.pointSpread, 2);
+        assert.deepEqual(body.teams.map(t => t.name), ["A", "B", "C"]);
     });
 
     it("un champ numérique vide est refusé avec un message d'erreur", async () => {
@@ -377,17 +374,6 @@ describe("E2E - écran de jeu (Round Robin)", opts, () => {
         await playScreen(["A", "B", "C"]);
         assert.equal(await page.locator(".div_round").count(), 3);
         assert.equal(await page.locator(".btn_roundMatche").count(), 3);
-    });
-
-    it("sauvegarde : avec « Oui », un fichier apparaît dans le dossier de téléchargement", async () => {
-        await playScreen(["A", "B", "C"], {}, true);
-        await poll(async () => (await readdir(server.downloads).catch(() => [])).length === 1, "fichier de sauvegarde absent");
-    });
-
-    it("sauvegarde : avec « Non », rien n'est écrit", async () => {
-        await playScreen(["A", "B", "C"], {}, false);
-        await page.waitForTimeout(300);
-        assert.deepEqual(await readdir(server.downloads).catch(() => []), []);
     });
 });
 
@@ -639,15 +625,6 @@ describe("E2E - reprise d'un tournoi existant", opts, () => {
         await openMatch(0);
         await enterSet(5, 0);
         await poll(async () => (await stat(firstMatch.team1.name, "NbVictory")).trim() === "1", "victoire non comptée");
-    });
-
-    it("la sauvegarde automatique est activée après un chargement", async () => {
-        const { state } = buildState();
-        await upload(state);
-        await page.locator("#div_PLAY").waitFor({ state: "visible" });
-        await openMatch(0);
-        await enterSet(5, 0);
-        await poll(async () => (await readdir(server.downloads).catch(() => [])).length === 1, "pas de sauvegarde");
     });
 
     for (const [label, content] of [

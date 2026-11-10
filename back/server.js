@@ -85,14 +85,14 @@ async function handler(req, res) {
     try {
         const url = req.url.split("?")[0];
 
-        if (req.url === "/api/save" && req.method === "POST") {
-            const body = await readBody(req);
+        // if (req.url === "/api/save" && req.method === "POST") {
+        //     const body = await readBody(req);
 
-            const tournament = buildTournament(body.state);
-            tournament.saving = !!body.save;
+        //     const tournament = buildTournament(body.state);
+        //     tournament.saving = !!body.save;
 
-            return sendJson(res, 200, { success: true });
-        }
+        //     return sendJson(res, 200, { success: true });
+        // }
 
         if (url === "/api/teams" && req.method === "POST") {
             const body = await readBody(req);
@@ -147,7 +147,9 @@ export default handler;
 
 // local
 if (!process.env.VERCEL) {
-    http.createServer(handler).listen(3000, () => {
-        console.log("Gestionnaire de tournois : http://localhost:3000");
+    const port = Number(process.env.PORT) || 3000;
+
+    http.createServer(handler).listen(port, () => {
+        console.log(`Gestionnaire de tournois : http://localhost:${port}`);
     });
 }
