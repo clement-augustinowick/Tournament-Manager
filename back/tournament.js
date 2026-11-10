@@ -102,7 +102,6 @@ export class Tournament {
             throw new Error(`Le type "${tournamentType}" n'a pas été implémenté.`);
         }
 
-        // À partir d'ici tout est valide : on peut modifier l'état.
         this.tournamentInfos = {
             tournamentType,
             nbGame: nbGame || 1,
@@ -166,7 +165,6 @@ export class Tournament {
         return new Error(`Fichier de tournoi invalide : ${reason}`);
     }
 
-    // Vérifie en profondeur le contenu d'un fichier de tournoi AVANT de l'accepter.
     validateLoadedContent(teamsList, tournamentInfos, matches) {
         const isPositiveInteger = value => Number.isInteger(value) && value >= 1;
         const isPlainObject = value => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -178,17 +176,21 @@ export class Tournament {
             if (!isPlainObject(team) || typeof team.name !== "string" || !team.name.trim()) {
                 throw this.invalidFile("une équipe n'a pas de nom.");
             }
+
             if (!Number.isInteger(team.teamNumber)) {
                 throw this.invalidFile(`l'équipe "${team.name}" n'a pas de numéro valide.`);
             }
+
             for (const stat of ["nbVictory", "nbSetWon", "goalAverage"]) {
                 if (!Number.isFinite(team[stat])) {
                     throw this.invalidFile(`statistique "${stat}" manquante ou invalide pour l'équipe "${team.name}".`);
                 }
             }
+
             if (teamNumbers.has(team.teamNumber) || teamNames.has(team.name)) {
                 throw this.invalidFile(`l'équipe "${team.name}" apparaît en double.`);
             }
+
             teamNumbers.add(team.teamNumber);
             teamNames.add(team.name);
         }
@@ -206,26 +208,32 @@ export class Tournament {
             if (!isPlainObject(round) || !Number.isInteger(round.id) || !Array.isArray(round.matches)) {
                 throw this.invalidFile("un round est mal formé.");
             }
+
             if (roundIds.has(round.id)) {
                 throw this.invalidFile(`le round ${round.id} apparaît en double.`);
             }
+
             roundIds.add(round.id);
 
             for (const match of round.matches) {
                 if (!isPlainObject(match) || !Number.isInteger(match.id) || !Array.isArray(match.set)) {
                     throw this.invalidFile(`un match du round ${round.id} est mal formé.`);
                 }
+
                 if (matchIds.has(match.id)) {
                     throw this.invalidFile(`le match ${match.id} apparaît en double.`);
                 }
+
                 matchIds.add(match.id);
 
                 for (const side of ["team1", "team2"]) {
                     const team = match[side];
+                    
                     if (!isPlainObject(team) || typeof team.name !== "string" || !teamNumbers.has(team.teamNumber)) {
                         throw this.invalidFile(`le match ${match.id} a une équipe (${side}) inconnue.`);
                     }
                 }
+
                 if (match.team1.teamNumber === match.team2.teamNumber) {
                     throw this.invalidFile(`le match ${match.id} oppose une équipe à elle-même.`);
                 }

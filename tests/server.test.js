@@ -3,20 +3,24 @@
 // code actuel ne respecte pas encore (voir tests/Tournament.test.js pour la convention).
 
 import assert from "node:assert/strict";
-import { access, readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { defaultConfig, sampleTeams, startServer } from "./helpers/fixture.js";
 
-let s;
-beforeEach(async () => { s = await startServer(); });
+let s, state;
+beforeEach(async () => { s = await startServer(); state = null; });
 afterEach(async () => { await s.stop(); });
 
-const exists = p => access(p).then(() => true, () => false);
-
 async function setup(nbTeams = 4, config = {}) {
-    await s.post("/api/teams", { teams: sampleTeams(nbTeams) });
-    return s.post("/api/tournament", { ...defaultConfig, ...config });
+    const r = await s.post("/api/tournament", { teams: sampleTeams(nbTeams), ...defaultConfig, ...config });
+    if (r.json?.success) state = r.json.state;
+    return r;
+}
+
+// Se comporte comme le navigateur : envoie l'état courant, et ne le remplace que si le serveur accepte.
+async function score(round, matchId, score1, score2) {
+    const r = await s.post(`/api/matches/${round}/${matchId}/score`, { state, score1, score2 });
+    if (r.json?.success) state = r.json.state;
+    return r;
 }
 
 describe("fichiers statiques", () => {
@@ -184,36 +188,31 @@ describe("POST /api/tournament", () => {
     });
 });
 
-describe("GET /api/state et /api/ranking", () => {
-    it("/api/state renvoie l'état courant", async () => {
+describe("POST /api/ranking", () => {
+    it("renvoie le classement trié", async () => {
         await setup(3);
-        const r = await s.get("/api/state");
-        assert.equal(r.status, 200);
-        assert.equal(r.json.state.teamsList.length, 3);
-        assert.equal(r.json.state.matches.length, 3);
-    });
-
-    it("/api/state sur un serveur vierge renvoie un état vide", async () => {
-        const r = await s.get("/api/state");
-        assert.equal(r.status, 200);
-        assert.deepEqual(r.json.state.teamsList, []);
-    });
-
-    it("/api/ranking renvoie le classement trié", async () => {
-        await setup(3);
-        const r = await s.get("/api/ranking");
+        const r = await s.post("/api/ranking", { state });
         assert.equal(r.status, 200);
         assert.equal(r.json.ranking.length, 3);
     });
 
-    it("/api/ranking reflète les victoires", async () => {
-        await setup(3);
-        const { state } = (await s.get("/api/state")).json;
-        const m = state.matches[0].matches[0];
-        await s.post(`/api/matches/1/${m.id}/score`, { score1: 5, score2: 0 });
-        const ranking = (await s.get("/api/ranking")).json.ranking;
+    it("reflète les victoires", async () => {
+        const { json } = await setup(3);
+        const m = json.state.matches[0].matches[0];
+        await score(1, m.id, 5, 0);
+        const ranking = (await s.post("/api/ranking", { state })).json.ranking;
         assert.equal(ranking[0].name, m.team1.name);
         assert.equal(ranking[0].nbVictory, 1);
+    });
+
+    it("400 si l'état est absent", async () => {
+        const r = await s.post("/api/ranking", {});
+        assert.equal(r.status, 400);
+    });
+
+    it("GET /api/state et GET /api/ranking n'existent plus", async () => {
+        assert.equal((await s.get("/api/state")).status, 404);
+        assert.equal((await s.get("/api/ranking")).status, 404);
     });
 });
 
@@ -221,33 +220,32 @@ describe("POST /api/matches/:round/:match/score", () => {
     it("enregistre un set et met à jour les stats", async () => {
         const { json } = await setup(4);
         const m = json.state.matches[0].matches[0];
-        const r = await s.post(`/api/matches/1/${m.id}/score`, { score1: 5, score2: 2 });
+        const r = await score(1, m.id, 5, 2);
         assert.equal(r.status, 200);
-        const updated = r.json.state.matches[0].matches[0];
-        assert.deepEqual(updated.set, [{ score1: 5, score2: 2 }]);
+        assert.deepEqual(r.json.state.matches[0].matches[0].set, [{ score1: 5, score2: 2 }]);
         assert.equal(r.json.state.teamsList.find(t => t.teamNumber === m.team1.teamNumber).nbVictory, 1);
     });
 
-    it("400 + message pour un score invalide, sans modifier l'état", async () => {
+    it("400 + message pour un score invalide ; le même état reste utilisable ensuite", async () => {
         const { json } = await setup(4);
         const m = json.state.matches[0].matches[0];
-        const r = await s.post(`/api/matches/1/${m.id}/score`, { score1: 5, score2: 5 });
+        const r = await score(1, m.id, 5, 5);
         assert.equal(r.status, 400);
         assert.match(r.json.error, /ne peut pas être nul/);
-        assert.deepEqual((await s.get("/api/state")).json.state.matches[0].matches[0].set, []);
+        assert.equal((await score(1, m.id, 5, 0)).status, 200);
     });
 
     it("400 pour un round ou un match inexistant", async () => {
         await setup(4);
-        assert.match((await s.post("/api/matches/99/1/score", { score1: 5, score2: 0 })).json.error, /Round introuvable/);
-        assert.match((await s.post("/api/matches/1/99/score", { score1: 5, score2: 0 })).json.error, /Match introuvable/);
+        assert.match((await score(99, 1, 5, 0)).json.error, /Round introuvable/);
+        assert.match((await score(1, 99, 5, 0)).json.error, /Match introuvable/);
     });
 
     it("400 quand le match est déjà gagné", async () => {
         const { json } = await setup(4);
         const m = json.state.matches[0].matches[0];
-        await s.post(`/api/matches/1/${m.id}/score`, { score1: 5, score2: 0 });
-        const r = await s.post(`/api/matches/1/${m.id}/score`, { score1: 5, score2: 0 });
+        await score(1, m.id, 5, 0);
+        const r = await score(1, m.id, 5, 0);
         assert.equal(r.status, 400);
         assert.match(r.json.error, /a déjà remporté le match/);
     });
@@ -255,156 +253,61 @@ describe("POST /api/matches/:round/:match/score", () => {
     it("400 si score1/score2 sont absents", async () => {
         const { json } = await setup(4);
         const m = json.state.matches[0].matches[0];
-        const r = await s.post(`/api/matches/1/${m.id}/score`, {});
+        const r = await score(1, m.id, undefined, undefined);
         assert.equal(r.status, 400);
     });
 
-    it("renvoie currentRound = round du set enregistré, et le conserve", async () => {
+    it("400 si l'état est absent ou invalide", async () => {
+        for (const body of [{ score1: 5, score2: 0 }, { state: {}, score1: 5, score2: 0 }]) {
+            const r = await s.post("/api/matches/1/1/score", body);
+            assert.equal(r.status, 400);
+        }
+    });
+
+    it("renvoie currentRound = round du set enregistré, et il survit à un rechargement", async () => {
         const { json } = await setup(4);
         const m = json.state.matches[1].matches[0];
-        const r = await s.post(`/api/matches/2/${m.id}/score`, { score1: 5, score2: 0 });
+        const r = await score(2, m.id, 5, 0);
         assert.equal(r.json.state.currentRound, 2);
-        assert.equal((await s.get("/api/state")).json.state.currentRound, 2);
-    });
-
-    it("le round sauvegardé est celui du dernier set (fichier de sauvegarde)", async () => {
-        await s.post("/api/save", { save: true });
-        const { json } = await setup(4, { nbGameSet: 2 });
-        const m = json.state.matches[2].matches[0];
-        await s.post(`/api/matches/3/${m.id}/score`, { score1: 5, score2: 0 });
-        const file = path.join(s.downloads, (await readdir(s.downloads))[0]);
-        assert.equal(JSON.parse(await readFile(file, "utf8")).currentRound, 3);
-    });
-
-    it("une requête sur un round inexistant (400) ne doit pas changer le round courant", async () => {
-        await setup(4);
-        const r = await s.post("/api/matches/99/1/score", { score1: 5, score2: 0 });
-        assert.equal(r.status, 400);
-        assert.equal((await s.get("/api/state")).json.state.currentRound, 1);
+        assert.equal((await s.post("/api/load", { state })).json.state.currentRound, 2);
     });
 
     it("404 si les identifiants ne sont pas numériques", async () => {
         await setup(4);
-        const r = await s.post("/api/matches/a/b/score", { score1: 5, score2: 0 });
+        const r = await s.post("/api/matches/a/b/score", { state, score1: 5, score2: 0 });
         assert.equal(r.status, 404);
     });
 
     it("GET sur cette route n'est pas un enregistrement de score (404 statique)", async () => {
-        await setup(4);
         const r = await s.get("/api/matches/1/1/score");
         assert.equal(r.status, 404);
     });
 });
 
 describe("POST /api/load", () => {
-    it("recharge un état exporté et le rend disponible", async () => {
+    it("un serveur vierge peut reprendre un état exporté et continuer", async () => {
         const { json } = await setup(4, { nbGameSet: 2 });
         const m = json.state.matches[0].matches[0];
-        await s.post(`/api/matches/1/${m.id}/score`, { score1: 5, score2: 0 });
-        const saved = (await s.get("/api/state")).json.state;
+        await score(1, m.id, 5, 0);
+        const saved = state;
 
         await s.stop();
         s = await startServer(); // serveur vierge = on « revient sur le site »
-        assert.deepEqual((await s.get("/api/state")).json.state.teamsList, []);
 
         const r = await s.post("/api/load", { state: saved });
         assert.equal(r.status, 200);
         assert.deepEqual(r.json.state, saved);
-        assert.deepEqual((await s.get("/api/state")).json.state, saved);
+
+        state = r.json.state;
+        assert.equal((await score(1, m.id, 5, 0)).status, 200);
     });
 
     it("400 pour un fichier invalide", async () => {
-        for (const state of [undefined, null, {}, { teamsList: [] }, "x"]) {
-            const r = await s.post("/api/load", { state });
-            assert.equal(r.status, 400, JSON.stringify(state));
+        for (const bad of [undefined, null, {}, { teamsList: [] }, "x"]) {
+            const r = await s.post("/api/load", { state: bad });
+            assert.equal(r.status, 400, JSON.stringify(bad));
             assert.equal(r.json.success, false);
         }
-    });
-
-    it("après un chargement, la sauvegarde automatique est active", async () => {
-        const { json } = await setup(4, { nbGameSet: 2 });
-        const m = json.state.matches[0].matches[0];
-        const saved = (await s.get("/api/state")).json.state;
-
-        await s.stop();
-        s = await startServer();
-        await s.post("/api/load", { state: saved });
-        await s.post(`/api/matches/1/${m.id}/score`, { score1: 5, score2: 0 }, { "Accept-Language": "fr" });
-        assert.equal((await readdir(s.downloads)).length, 1);
-    });
-});
-
-describe("sauvegarde automatique (POST /api/save)", () => {
-    const files = async () => ((await exists(s.downloads)) ? readdir(s.downloads) : []);
-
-    it("save=false : aucun fichier n'est écrit", async () => {
-        await s.post("/api/save", { save: false });
-        const { json } = await setup(3);
-        await s.post(`/api/matches/1/${json.state.matches[0].matches[0].id}/score`, { score1: 5, score2: 0 });
-        assert.deepEqual(await files(), []);
-    });
-
-    it("sans appel à /api/save : aucun fichier non plus (défaut = non)", async () => {
-        await setup(3);
-        assert.deepEqual(await files(), []);
-    });
-
-    it("save=true : un fichier est écrit à la configuration, puis mis à jour à chaque set", async () => {
-        await s.post("/api/save", { save: true });
-        const { json } = await setup(4, { nbGameSet: 2 });
-        const m = json.state.matches[0].matches[0];
-
-        let list = await files();
-        assert.equal(list.length, 1);
-        const file = path.join(s.downloads, list[0]);
-        assert.equal(JSON.parse(await readFile(file, "utf8")).matches[0].matches[0].set.length, 0);
-
-        await s.post(`/api/matches/1/${m.id}/score`, { score1: 5, score2: 0 });
-        list = await files();
-        assert.equal(list.length, 1, "le même fichier doit être réécrit");
-        assert.equal(JSON.parse(await readFile(file, "utf8")).matches[0].matches[0].set.length, 1);
-    });
-
-    it("le contenu sauvegardé est rechargeable via /api/load", async () => {
-        await s.post("/api/save", { save: true });
-        await setup(4);
-        const file = path.join(s.downloads, (await files())[0]);
-        const content = JSON.parse(await readFile(file, "utf8"));
-        const r = await s.post("/api/load", { state: content });
-        assert.equal(r.status, 200);
-    });
-
-    it("le nom du fichier suit la langue du navigateur (Accept-Language)", async () => {
-        await s.post("/api/save", { save: true });
-        await s.post("/api/teams", { teams: sampleTeams(3) });
-        await s.post("/api/tournament", defaultConfig, { "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8" });
-        assert.match((await files())[0], /^tournois-\d{2}-\d{2}-\d{4}\.json$/);
-    });
-
-    it("langue non française : préfixe 'tournament'", async () => {
-        await s.post("/api/save", { save: true });
-        await s.post("/api/teams", { teams: sampleTeams(3) });
-        await s.post("/api/tournament", defaultConfig, { "Accept-Language": "en-US,en;q=0.9" });
-        assert.match((await files())[0], /^tournament-\d{2}-\d{2}-\d{4}\.json$/);
-    });
-
-    it("sans en-tête Accept-Language : préfixe 'tournament'", async () => {
-        await s.post("/api/save", { save: true });
-        await s.post("/api/teams", { teams: sampleTeams(3) });
-        await s.post("/api/tournament", defaultConfig, { "Accept-Language": "" });
-        assert.match((await files())[0], /^tournament-/);
-    });
-
-    it("valeurs truthy/falsy sont converties (!!body.save)", async () => {
-        await s.post("/api/save", { save: 1 });
-        await setup(3);
-        assert.equal((await files()).length, 1);
-    });
-
-    it("renvoie success: true", async () => {
-        const r = await s.post("/api/save", { save: true });
-        assert.equal(r.status, 200);
-        assert.deepEqual(r.json, { success: true });
     });
 });
 
@@ -427,34 +330,36 @@ describe("routage général", () => {
     });
 
     it("les réponses JSON sont en application/json; charset=utf-8", async () => {
-        const r = await s.get("/api/state");
+        const r = await s.post("/api/teams", { teams: sampleTeams(3) });
         assert.match(r.headers.get("content-type"), /^application\/json; charset=utf-8/);
     });
 
     it("un tournoi complet de bout en bout via l'API", async () => {
-        await s.post("/api/save", { save: false });
         const { json } = await setup(4, { nbGameSet: 2 });
         for (const round of json.state.matches) {
             for (const m of round.matches) {
                 const t1Wins = m.team1.teamNumber < m.team2.teamNumber;
                 for (let i = 0; i < 2; i++) {
-                    const r = await s.post(`/api/matches/${round.id}/${m.id}/score`, {
-                        score1: t1Wins ? 5 : 0,
-                        score2: t1Wins ? 0 : 5
-                    });
+                    const r = await score(round.id, m.id, t1Wins ? 5 : 0, t1Wins ? 0 : 5);
                     assert.equal(r.status, 200);
                 }
             }
         }
-        const ranking = (await s.get("/api/ranking")).json.ranking;
+        const ranking = (await s.post("/api/ranking", { state })).json.ranking;
         assert.deepEqual(ranking.map(t => t.name), ["A", "B", "C", "D"]);
         assert.deepEqual(ranking.map(t => t.nbVictory), [3, 2, 1, 0]);
         assert.deepEqual(ranking.map(t => t.nbSetWon), [6, 4, 2, 0]);
     });
 
-    it("limite connue : l'état est global au serveur (partagé entre tous les clients)", async () => {
+    it("le serveur ne garde aucun état : il n'y a plus de tournoi partagé entre clients", async () => {
         await setup(3);
-        // un « autre client » voit immédiatement le même tournoi
-        assert.equal((await s.get("/api/state")).json.state.teamsList.length, 3);
+        const r = await s.post("/api/ranking", {}); // un autre client, sans état
+        assert.equal(r.status, 400);
+    });
+
+    it("le serveur ne garde aucun état : il n'y a plus de tournoi partagé entre clients", async () => {
+        await setup(3);
+        const r = await s.post("/api/ranking", {}); // un autre client, sans état
+        assert.equal(r.status, 400);
     });
 });

@@ -25,15 +25,16 @@ const mimeTypes = {
 };
 
 async function readBody(req) {
+    // Vercel
+    if (req.body !== undefined) {
+        if (typeof req.body === "string") return req.body ? JSON.parse(req.body) : {};
+        return req.body ?? {};
+    }
+
+    // local
     let body = "";
     for await (const chunk of req) body += chunk;
     return body ? JSON.parse(body) : {};
-}
-
-function getBrowserLanguage(req) {
-    const header = req.headers["accept-language"] || "";
-    const first = header.split(",")[0].trim();
-    return first.split("-")[0].split(";")[0].toLowerCase() || undefined;
 }
 
 function sendJson(res, status, data) {
@@ -74,92 +75,62 @@ async function serveStatic(req, res) {
     }
 }
 
-const server = http.createServer(async (req, res) => {
+function buildTournament(state) {
+    const tournament = new Tournament();
+    tournament.loadState(state);
+    return tournament;
+}
+
+async function handler(req, res) {
     try {
-        if (req.url === "/api/save" && req.method === "POST") {
+        const url = req.url.split("?")[0];
+
+        // if (req.url === "/api/save" && req.method === "POST") {
+        //     const body = await readBody(req);
+
+        //     const tournament = buildTournament(body.state);
+        //     tournament.saving = !!body.save;
+
+        //     return sendJson(res, 200, { success: true });
+        // }
+
+        if (url === "/api/teams" && req.method === "POST") {
             const body = await readBody(req);
-
-            tournament.saving = !!body.save;
-
-            return sendJson(res, 200, {
-                success: true
-            });
-        }
-
-        if (req.url === "/api/teams" && req.method === "POST") {
-            const body = await readBody(req);
-
+            const tournament = new Tournament();
             tournament.setTeams(body.teams);
-
-            return sendJson(res, 200, {
-                success: true,
-                state: tournament.getState()
-            });
+            return sendJson(res, 200, { success: true, state: tournament.getState() });
         }
 
-        if (req.url === "/api/load" && req.method === "POST") {
+        if (url === "/api/load" && req.method === "POST") {
             const body = await readBody(req);
-
-            tournament.loadState(body.state);
-
-            return sendJson(res, 200, {
-                success: true,
-                state: tournament.getState()
-            });
+            const tournament = buildTournament(body.state);
+            return sendJson(res, 200, { success: true, state: tournament.getState() });
         }
 
-        if (req.url === "/api/tournament" && req.method === "POST") {
+        if (url === "/api/tournament" && req.method === "POST") {
             const body = await readBody(req);
-
+            const tournament = new Tournament();
+            tournament.setTeams(body.teams);
             tournament.configure(body);
-            
-            if (tournament.saving){
-                await tournament.save(getBrowserLanguage(req));
-            }
-            
-            return sendJson(res, 200, {
-                success: true,
-                state: tournament.getState()
-            });
+            return sendJson(res, 200, { success: true, state: tournament.getState() });
         }
 
-        const scoreMatch = req.url.match(/^\/api\/matches\/(\d+)\/(\d+)\/score$/);
+        const scoreMatch = url.match(/^\/api\/matches\/(\d+)\/(\d+)\/score$/);
         if (scoreMatch && req.method === "POST") {
-            
             const [, roundId, matchId] = scoreMatch;
             const body = await readBody(req);
-
-            tournament.addSet(
-                roundId,
-                matchId,
-                body.score1,
-                body.score2
-            );
-
-            if (tournament.saving){
-                await tournament.save(getBrowserLanguage(req));
-            }
-            
-            return sendJson(res, 200, {
-                success: true,
-                state: tournament.getState()
-            });
+            const tournament = buildTournament(body.state);
+            tournament.addSet(roundId, matchId, body.score1, body.score2);
+            return sendJson(res, 200, { success: true, state: tournament.getState() });
         }
 
-        if (req.url === "/api/state" && req.method === "GET") {
-            return sendJson(res, 200, {
-                success: true,
-                state: tournament.getState()
-            });
+        if (url === "/api/ranking" && req.method === "POST") {
+            const body = await readBody(req);
+            const tournament = buildTournament(body.state);
+            return sendJson(res, 200, { success: true, ranking: tournament.getRanking() });
         }
 
-        if (req.url === "/api/ranking" && req.method === "GET") {
-            return sendJson(res, 200, {
-                success: true,
-                ranking: tournament.getRanking()
-            });
-        }
-
+        // local
         if (req.method === "GET") {
             return await serveStatic(req, res);
         }
@@ -167,16 +138,18 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 404, { success: false, error: "Route inconnue." });
 
     } catch (error) {
-
         console.error(error);
-        return sendJson(res, 400, {
-            success: false,
-            error: error.message
-        });
-        
+        return sendJson(res, 400, { success: false, error: error.message });
     }
-});
+}
 
-server.listen(3000, () => {
-    console.log("Gestionnaire de tournois : http://localhost:3000");
-});
+export default handler;
+
+// local
+if (!process.env.VERCEL) {
+    const port = Number(process.env.PORT) || 3000;
+
+    http.createServer(handler).listen(port, () => {
+        console.log(`Gestionnaire de tournois : http://localhost:${port}`);
+    });
+}

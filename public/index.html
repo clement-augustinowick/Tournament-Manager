@@ -15,10 +15,10 @@
 
             <div id="creation">
                 <h1>Bienvenu sur votre gestionnaire de tournois</h1>
-                <button id="new_tournament" class="btn" onclick="askingSaveTournament()">Nouveau tournois</button>
-                <button id="old_tournament" class="btn" onclick="checkOldTournament()">Tournois existant</button>
+                <button id="new_tournament" class="btn" onclick="saveTournament(false)">Nouveau tournois</button>
+                <!-- <button id="old_tournament" class="btn" onclick="checkOldTournament()">Tournois existant</button>
                 <h4 style="text-align: center;">*Retrouvez les informations d'un tournois dans vos téléchargements</h4>
-                <input type="file" id="input_loadTournament" accept="application/json" style="display:none" onchange="loadTournamentFile(event)">
+                <input type="file" id="input_loadTournament" accept="application/json" style="display:none" onchange="loadTournamentFile(event)"> -->
             </div>
 
             <div id="overlayAskingSave" class="overlay" style="display:none;">
@@ -135,11 +135,11 @@
                             </div>
 
                             <div class="div_panelTeamStat">
-                                <h5>Set/Manche</br>gagné</h5>
+                                <h5>Set/Manche<br>gagné</h5>
                             </div>
 
                             <div class="div_panelTeamStat">
-                                <h5>Goal</br>Average</h5>
+                                <h5>Goal<br>Average</h5>
                             </div>
 
                         </div>
@@ -200,9 +200,9 @@
                                     <p id="p_inputSetResult">Set 0 :</p>
 
                                     <div class="div_result">
-                                        <input id="inputTeam1" type=number value=0 min=0></input>
+                                        <input id="inputTeam1" type=number value=0 min=0>
                                         <p>-</p>
-                                        <input id="inputTeam2" type=number value=0 min=0></input>
+                                        <input id="inputTeam2" type=number value=0 min=0>
                                     </div>
 
                                     <button id="btn_validSetResult" onclick="ValidInputSetResult()">✔</button>
@@ -217,7 +217,7 @@
                 </div>
             </div>
         </div>
-    </body>
 
-    <script src="script.js"></script>
+        <script src="script.js"></script>
+    </body>
 </html>

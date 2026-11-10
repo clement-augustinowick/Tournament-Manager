@@ -3,7 +3,7 @@
 // sauvegardes (~/Downloads) n'écrivent jamais dans votre vrai dossier Téléchargements.
 
 import { spawn } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import http from "node:http";
 import net from "node:net";
 import os from "node:os";
@@ -55,12 +55,6 @@ export async function startServer() {
     // Le port 3000 est codé en dur dans server.js : on le rend configurable
     // dans la COPIE de test uniquement (votre fichier n'est pas modifié).
     const serverPath = path.join(tmp, "back", "server.js");
-    let code = await readFile(serverPath, "utf8");
-    code = code.replace(
-        /server\.listen\(\s*(?:process\.env\.PORT\s*\|\|\s*)?3000/,
-        "server.listen(Number(process.env.PORT) || 3000"
-    );
-    await writeFile(serverPath, code);
 
     const port = await freePort();
     const child = spawn(process.execPath, [serverPath], {
