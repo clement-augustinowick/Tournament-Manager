@@ -61,7 +61,7 @@ function checkOldTournament() {
 
 async function loadTournamentFile(event) {
     const file = event.target.files[0];
-    event.target.value = ""; // permet de resélectionner le même fichier plus tard
+    event.target.value = "";
 
     if (!file) return;
 
@@ -216,6 +216,7 @@ async function GetTournamentInfos() {
         const result = await api("/api/tournament", {
             method: "POST",
             body: JSON.stringify({
+                teams: state.teamsList,
                 tournamentType: select.value,
                 nbGame: document.getElementById("input_nbGame").valueAsNumber,
                 nbGameSet: document.getElementById("input_nbGameSet").valueAsNumber,
@@ -230,16 +231,13 @@ async function GetTournamentInfos() {
         document.getElementById("form_selectTournamentSpec").style.display = "none";
         document.getElementById("div_PLAY").style.display = "flex";
 
-        // CreateScorePanel & CreateRoundsPanel en fonction du type de tournois
         displayTournament();
     } catch (error) {
         showError(error);
     }
 }
 
-// Table de correspondance type de tournoi -> fonction d'affichage du panneau de jeu.
-// Permet d'adapter l'affichage à chaque type de tournoi (nouveau ou repris depuis un fichier),
-// sans changer GetTournamentInfos() ni loadTournamentFile() à chaque ajout d'un nouveau type.
+
 const tournamentDisplayBuilders = {
     RoundRobin: displayRoundRobinTournament
 };
@@ -385,6 +383,7 @@ async function ValidInputSetResult() {
             {
                 method: "POST",
                 body: JSON.stringify({
+                    state,
                     score1: inputTeam1,
                     score2: inputTeam2
                 })
@@ -448,7 +447,11 @@ function displaySetResult(setResult) {
 
 async function CalculateRanking() {
     try {
-        const result = await api("/api/ranking");
+        const result = await api("/api/ranking", {
+            method: "POST",
+            body: JSON.stringify({ state })
+        });
+        
         const ranking = result.ranking;
 
         document.getElementById("overlayRank").style.display = "flex";
