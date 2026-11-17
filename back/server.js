@@ -7,6 +7,7 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Tournament } from "./tournament.js";
+import { createTournament, getTournamentState, saveTournamentState } from "./db.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,15 +86,6 @@ async function handler(req, res) {
     try {
         const url = req.url.split("?")[0];
 
-        // if (req.url === "/api/save" && req.method === "POST") {
-        //     const body = await readBody(req);
-
-        //     const tournament = buildTournament(body.state);
-        //     tournament.saving = !!body.save;
-
-        //     return sendJson(res, 200, { success: true });
-        // }
-
         if (url === "/api/teams" && req.method === "POST") {
             const body = await readBody(req);
             const tournament = new Tournament();
@@ -101,32 +93,43 @@ async function handler(req, res) {
             return sendJson(res, 200, { success: true, state: tournament.getState() });
         }
 
-        if (url === "/api/load" && req.method === "POST") {
-            const body = await readBody(req);
-            const tournament = buildTournament(body.state);
-            return sendJson(res, 200, { success: true, state: tournament.getState() });
-        }
+        // if (url === "/api/load" && req.method === "POST") {
+        //     const body = await readBody(req);
+        //     const state = buildTournament(body.state).getState();
+        //     const id = await createTournament(state);
+        //     return sendJson(res, 200, { success: true, id, state });
+        // }
 
         if (url === "/api/tournament" && req.method === "POST") {
             const body = await readBody(req);
             const tournament = new Tournament();
             tournament.setTeams(body.teams);
             tournament.configure(body);
-            return sendJson(res, 200, { success: true, state: tournament.getState() });
+            const state = tournament.getState();
+            const id = await createTournament(state);
+            return sendJson(res, 200, { success: true, id, state });
+        }
+
+        const getMatch = url.match(/^\/api\/tournaments\/([0-9a-f-]{36})$/i);
+        if (getMatch && req.method === "GET") {
+            const state = await getTournamentState(getMatch[1]);
+            return sendJson(res, 200, { success: true, id: getMatch[1], state });
         }
 
         const scoreMatch = url.match(/^\/api\/matches\/(\d+)\/(\d+)\/score$/);
         if (scoreMatch && req.method === "POST") {
             const [, roundId, matchId] = scoreMatch;
             const body = await readBody(req);
-            const tournament = buildTournament(body.state);
+            const tournament = buildTournament(await getTournamentState(body.id));
             tournament.addSet(roundId, matchId, body.score1, body.score2);
-            return sendJson(res, 200, { success: true, state: tournament.getState() });
+            const state = tournament.getState();
+            await saveTournamentState(body.id, state);
+            return sendJson(res, 200, { success: true, state });
         }
 
         if (url === "/api/ranking" && req.method === "POST") {
             const body = await readBody(req);
-            const tournament = buildTournament(body.state);
+            const tournament = buildTournament(await getTournamentState(body.id));
             return sendJson(res, 200, { success: true, ranking: tournament.getRanking() });
         }
 

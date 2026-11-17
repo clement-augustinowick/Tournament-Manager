@@ -19,6 +19,8 @@ let state = {
     currentRound: 1
 };
 
+let tournamentId = null;
+
 let currentMatch = 1;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,17 +49,17 @@ function showError(error) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-function askingSaveTournament(){
-    document.getElementById('overlayAskingSave').style.display = 'flex';
-}
+// function askingSaveTournament(){
+//     document.getElementById('overlayAskingSave').style.display = 'flex';
+// }
 
-function closeAskingSaveOverlay(){
-    document.getElementById('overlayAskingSave').style.display = 'none';
-}
+// function closeAskingSaveOverlay(){
+//     document.getElementById('overlayAskingSave').style.display = 'none';
+// }
 
-function checkOldTournament() {
-    document.getElementById("input_loadTournament").click();
-}
+// function checkOldTournament() {
+//     document.getElementById("input_loadTournament").click();
+// }
 
 async function loadTournamentFile(event) {
     const file = event.target.files[0];
@@ -75,7 +77,6 @@ async function loadTournamentFile(event) {
         });
 
         state = result.state;
-        // check result.state
 
         document.getElementById("creation").style.display = "none";
         document.getElementById("form_addTeams").style.display = "none";
@@ -88,18 +89,12 @@ async function loadTournamentFile(event) {
     }
 }
 
-function saveTournament(save) {
-    api("/api/save", {
-        method: "POST",
-        body: JSON.stringify({ save })
-    });
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
+function goToTeamsForm(){
     document.getElementById("creation").style.display = "none";
-    document.getElementById('overlayAskingSave').style.display = 'none';
     document.getElementById("form_addTeams").style.display = "flex";
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 let teamID = 1;
 
@@ -179,7 +174,6 @@ async function MoveToTournamentSpecForm() {
         });
 
         state = result.state;
-        // check result.state
 
         document.getElementById("form_addTeams").style.display = "none";
         document.getElementById("form_selectTournamentSpec").style.display = "flex";
@@ -226,7 +220,8 @@ async function GetTournamentInfos() {
         });
 
         state = result.state;
-        // check result.state
+        tournamentId = result.id;
+        location.hash = tournamentId;
 
         document.getElementById("form_selectTournamentSpec").style.display = "none";
         document.getElementById("div_PLAY").style.display = "flex";
@@ -383,7 +378,7 @@ async function ValidInputSetResult() {
             {
                 method: "POST",
                 body: JSON.stringify({
-                    state,
+                    id: tournamentId,
                     score1: inputTeam1,
                     score2: inputTeam2
                 })
@@ -391,7 +386,6 @@ async function ValidInputSetResult() {
         );
 
         state = result.state;
-        // check result.state
 
         const round = state.matches.find(r => r.id === state.currentRound);
         const match = round.matches.find(m => m.id === currentMatch);
@@ -449,7 +443,7 @@ async function CalculateRanking() {
     try {
         const result = await api("/api/ranking", {
             method: "POST",
-            body: JSON.stringify({ state })
+            body: JSON.stringify({ id: tournamentId })
         });
         
         const ranking = result.ranking;
@@ -493,3 +487,27 @@ async function CalculateRanking() {
         showError(error);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+async function resumeFromUrl() {
+    const id = location.hash.slice(1);
+    if (!id) return;
+
+    try {
+        const result = await api(`/api/tournaments/${id}`);
+        state = result.state;
+        tournamentId = result.id;
+
+        document.getElementById("creation").style.display = "none";
+        document.getElementById("form_addTeams").style.display = "none";
+        document.getElementById("form_selectTournamentSpec").style.display = "none";
+        document.getElementById("div_PLAY").style.display = "flex";
+        displayTournament();
+    } catch (error) {
+        history.replaceState(null, "", location.pathname + location.search);
+        console.warn("Impossible de reprendre le tournoi :", error.message);
+    }
+}
+
+resumeFromUrl();
