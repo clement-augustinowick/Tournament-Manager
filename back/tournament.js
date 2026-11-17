@@ -2,10 +2,6 @@
 // Clément Augustinowick
 //
 
-import fs from "fs/promises";
-import path from "path";
-import os from "os";
-
 const defaultTeam = {
     name: "",
     teamNumber: 0,
@@ -31,7 +27,6 @@ export class Tournament {
     }
 
     reset() {
-        this.saving = false;
         this.teamsList = [];
         this.tournamentInfos = {
             tournamentType: "",
@@ -155,8 +150,6 @@ export class Tournament {
         
         const savedRound = Number(currentRound);
         this.currentRound = this.matches.some(round => round.id === savedRound) ? savedRound : 1;
-
-        this.saving = true;
 
         return this.getState();
     }
@@ -349,28 +342,6 @@ export class Tournament {
             matches: structuredClone(this.matches),
             currentRound: this.currentRound
         };
-    }
-
-    async save(language, directory = path.join(os.homedir(), "Downloads")) {
-        await fs.mkdir(directory, { recursive: true });
-
-        const now = new Date();
-
-        const day = String(now.getDate()).padStart(2, "0");
-        const month = String(now.getMonth() + 1).padStart(2, "0");
-        const year = now.getFullYear();
-
-        const prefix = language == "fr" ? "tournois" : "tournament";
-        const date = `${day}-${month}-${year}`;
-        const fileName = path.join(directory, `${prefix}-${date}.json`);
-
-        await fs.writeFile(
-            fileName,
-            JSON.stringify(this.getState(), null, 2),
-            "utf8"
-        );
-
-        return fileName;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
